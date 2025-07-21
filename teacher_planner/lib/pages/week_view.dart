@@ -1,8 +1,10 @@
 /// lib/pages/week_view.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_box_transform/flutter_box_transform.dart';
 import 'add_event_page.dart';
 import 'lesson_detail_page.dart';
+import 'day_detail_page.dart';
 import 'dart:math';
 
 /// Mutable event model to support resizing and width adjustment
@@ -29,6 +31,7 @@ class _EventLayout {
   final EventBlock event;
   final int colIndex;
   final int totalCols;
+
   _EventLayout({
     required this.event,
     required this.colIndex,
@@ -60,6 +63,7 @@ class _WeekViewState extends State<WeekView> {
       final dayEvents = events.where((e) => e.day == day).toList()
         ..sort((a, b) => a.startHour.compareTo(b.startHour));
       List<List<EventBlock>> columns = [];
+
       for (var ev in dayEvents) {
         bool placed = false;
         for (var col in columns) {
@@ -78,6 +82,7 @@ class _WeekViewState extends State<WeekView> {
         }
         if (!placed) columns.add([ev]);
       }
+
       final layouts = <_EventLayout>[];
       for (int i = 0; i < columns.length; i++) {
         for (var ev in columns[i]) {
@@ -100,6 +105,7 @@ class _WeekViewState extends State<WeekView> {
   @override
   Widget build(BuildContext context) {
     final hours = List.generate(endHour - startHour + 1, (i) => startHour + i);
+
     return Scaffold(
       appBar: AppBar(title: Text('Weekly Planner')),
       body: LayoutBuilder(
@@ -110,6 +116,7 @@ class _WeekViewState extends State<WeekView> {
           final totalD = days.length;
           final slotH = (constraints.maxHeight - headerH) / totalH;
           final colW = (constraints.maxWidth - timeLabelW) / totalD;
+
           return Row(
             children: [
               // Time labels
@@ -130,6 +137,7 @@ class _WeekViewState extends State<WeekView> {
                   ),
                 ),
               ),
+
               // Day columns
               Expanded(
                 child: SingleChildScrollView(
@@ -137,23 +145,45 @@ class _WeekViewState extends State<WeekView> {
                   child: Row(
                     children: days.map((day) {
                       final layouts = layoutsByDay[day] ?? [];
+
                       return SizedBox(
                         width: colW,
                         child: Column(
                           children: [
+                            // Tappable header
                             SizedBox(
                               height: headerH,
-                              child: Center(
-                                child: Text(
-                                  day,
-                                  style: TextStyle(fontWeight: FontWeight.bold),
+                              child: InkWell(
+                                onTap: () {
+                                  final todayEvents = events
+                                      .where((ev) => ev.day == day)
+                                      .toList();
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => DayDetailPage(
+                                        day: day,
+                                        events: todayEvents,
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: Center(
+                                  child: Text(
+                                    day,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
+
+                            // Grid + resizable/draggable event boxes
                             Expanded(
                               child: Stack(
                                 children: [
-                                  // Grid lines
+                                  // Grid background
                                   Column(
                                     children: List.generate(
                                       totalH,
@@ -169,6 +199,7 @@ class _WeekViewState extends State<WeekView> {
                                       ),
                                     ),
                                   ),
+
                                   // Event boxes
                                   ...layouts.map((layout) {
                                     final e = layout.event;
@@ -177,6 +208,7 @@ class _WeekViewState extends State<WeekView> {
                                     final top =
                                         (e.startHour - startHour) * slotH;
                                     final height = e.duration * slotH;
+
                                     return TransformableBox(
                                       rect: Rect.fromLTWH(
                                         barLeft,
@@ -190,6 +222,16 @@ class _WeekViewState extends State<WeekView> {
                                             constraints.maxWidth,
                                             constraints.maxHeight,
                                           ),
+                                      enabledHandles: {
+                                        HandlePosition.top,
+                                        HandlePosition.bottom,
+                                      },
+                                      visibleHandles: {
+                                        HandlePosition.top,
+                                        HandlePosition.bottom,
+                                      },
+                                      allowFlippingWhileResizing: false,
+
                                       onChanged: (result, _) {
                                         setState(() {
                                           final r = result.rect;
@@ -198,59 +240,49 @@ class _WeekViewState extends State<WeekView> {
                                               (r.top / slotH).round();
                                           e.duration = (r.height / slotH)
                                               .round();
-                                          e.widthFactor = (r.width / baseW)
-                                              .clamp(0.1, 1.0);
                                           _computeLayouts();
                                         });
                                       },
+
                                       contentBuilder: (context, rect, flip) {
-                                        return Positioned(
-                                          left: rect.left,
-                                          top: rect.top,
+                                        // Just a colored box sized by rect—no Positioned here!
+                                        return Container(
                                           width: rect.width,
                                           height: rect.height,
+                                          decoration: BoxDecoration(
+                                            color: e.color,
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
                                           child: Stack(
                                             children: [
-                                              Positioned.fill(
-                                                child: GestureDetector(
-                                                  onTap: () async {
-                                                    await Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (_) =>
-                                                            LessonDetailPage(
-                                                              event: e,
-                                                            ),
-                                                      ),
-                                                    );
-                                                  },
-                                                  child: Container(
-                                                    margin:
-                                                        EdgeInsets.symmetric(
-                                                          horizontal: 2,
-                                                          vertical: 1,
-                                                        ),
-                                                    decoration: BoxDecoration(
-                                                      color: e.color,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6,
+                                              // Tap to open lesson details
+                                              GestureDetector(
+                                                onTap: () async {
+                                                  await Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (_) =>
+                                                          LessonDetailPage(
+                                                            event: e,
                                                           ),
                                                     ),
-                                                    child: Center(
-                                                      child: Text(
-                                                        e.subject,
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 12,
-                                                        ),
-                                                        textAlign:
-                                                            TextAlign.center,
-                                                      ),
+                                                  );
+                                                },
+                                                child: Center(
+                                                  child: Text(
+                                                    e.subject,
+                                                    style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 12,
                                                     ),
+                                                    textAlign: TextAlign.center,
                                                   ),
                                                 ),
                                               ),
+
+                                              // Delete button
                                               Positioned(
                                                 top: 2,
                                                 right: 2,
@@ -292,7 +324,7 @@ class _WeekViewState extends State<WeekView> {
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
         onPressed: () async {
-          final newEvent = await Navigator.push<EventBlock>(
+          final newEvent = await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => AddEventPage()),
           );
