@@ -154,7 +154,7 @@ class _WeekViewState extends State<WeekView> {
                             SizedBox(
                               height: headerH,
                               child: InkWell(
-                                onTap: () {
+                                onTap: () async {
                                   final todayEvents = events
                                       .where((ev) => ev.day == day)
                                       .toList();
@@ -167,6 +167,10 @@ class _WeekViewState extends State<WeekView> {
                                       ),
                                     ),
                                   );
+                                  setState(() {
+                                    // Refresh layouts after returning from day detail
+                                    _computeLayouts();
+                                  });
                                 },
                                 child: Center(
                                   child: Text(
