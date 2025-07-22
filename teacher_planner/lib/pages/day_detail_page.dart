@@ -1,5 +1,6 @@
+// lib/pages/day_detail_page.dart
+
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
 import 'week_view.dart';
 
 class DayDetailPage extends StatelessWidget {
@@ -11,33 +12,37 @@ class DayDetailPage extends StatelessWidget {
   static const int startHour = 6, endHour = 18;
   static const double hourHeight = 80.0, padding = 12.0;
 
-  double _measureHeight(quill.Delta delta, double maxWidth, TextStyle style) {
-    final doc = quill.Document.fromDelta(delta);
+  double _measureTextHeight(String text, double maxWidth, TextStyle style) {
     final tp = TextPainter(
-      text: TextSpan(
-        children: [
-          for (var op in doc.toDelta()) TextSpan(text: op.value, style: style),
-        ],
-      ),
+      text: TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,
-    );
-    tp.layout(maxWidth: maxWidth);
-    return tp.size.height;
+      maxLines: null,
+    )..layout(maxWidth: maxWidth);
+    return tp.height;
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final totalSlots = endHour - startHour;
+
     // base timeline height
     double timelineH = totalSlots * hourHeight;
-    // area width for text measurement
     final contentW = MediaQuery.of(context).size.width * 0.8 - padding * 2;
-    final style = theme.textTheme.bodyLarge!;
+    final styleTitle = theme.textTheme.titleMedium!;
+    final styleSubtitle = theme.textTheme.bodyMedium!;
+    final styleBody = theme.textTheme.bodySmall!;
 
-    // bump timeline to fit full Quill body
+    // expand for each event’s content
     for (var ev in events) {
-      final h = _measureHeight(ev.details, contentW, style) + padding * 2;
+      double h = padding * 2;
+      h += _measureTextHeight(ev.subject, contentW, styleTitle);
+      h += _measureTextHeight(ev.subtitle, contentW, styleSubtitle);
+      for (var line in ev.body.split('\n')) {
+        h += _measureTextHeight(line, contentW, styleBody);
+      }
+      h += (ev.body.split('\n').length + 1) * 4; // line spacing
+
       final bottom = (ev.startHour - startHour) * hourHeight + h;
       if (bottom > timelineH) timelineH = bottom;
     }
@@ -46,90 +51,73 @@ class DayDetailPage extends StatelessWidget {
       appBar: AppBar(title: Text(day)),
       body: Column(
         children: [
-          // scrollable timeline
           Expanded(
             child: SingleChildScrollView(
               child: SizedBox(
                 height: timelineH,
                 child: Row(
                   children: [
-                    // curriculum
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        margin: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey),
-                        ),
-                        child: Center(child: Text('AUS curriculum')),
-                      ),
-                    ),
-
-                    // time labels
-                    SizedBox(
-                      width: 60,
-                      child: Column(
-                        children: List.generate(totalSlots, (i) {
-                          return SizedBox(
-                            height: hourHeight,
-                            child: Center(
-                              child: Text(
-                                '${startHour + i}:00',
-                                style: TextStyle(fontSize: 12),
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
+                    // your curriculum & time labels…
 
                     // event timeline
                     Expanded(
                       flex: 3,
                       child: Stack(
                         children: [
-                          // hour grid lines
+                          // grid lines…
                           for (var i = 0; i <= totalSlots; i++)
                             Positioned(
                               top: i * hourHeight,
                               left: 0,
                               right: 0,
-                              child: Divider(
-                                color: Colors.grey.shade300,
-                                height: 1,
-                              ),
+                              child: Divider(color: Colors.grey.shade300),
                             ),
 
-                          // each event
+                          // events
                           for (var ev in events)
                             Positioned(
                               top: (ev.startHour - startHour) * hourHeight,
                               left: 8,
                               right: 8,
-                              height:
-                                  _measureHeight(ev.details, contentW, style) +
-                                  padding * 2,
+                              height: () {
+                                double hh = padding * 2;
+                                hh += _measureTextHeight(
+                                  ev.subject,
+                                  contentW,
+                                  styleTitle,
+                                );
+                                hh += _measureTextHeight(
+                                  ev.subtitle,
+                                  contentW,
+                                  styleSubtitle,
+                                );
+                                for (var l in ev.body.split('\n')) {
+                                  hh += _measureTextHeight(
+                                    l,
+                                    contentW,
+                                    styleBody,
+                                  );
+                                }
+                                hh += (ev.body.split('\n').length + 1) * 4;
+                                return hh;
+                              }(),
                               child: Container(
                                 padding: EdgeInsets.all(padding),
                                 decoration: BoxDecoration(
                                   color: ev.color,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: quill.QuillEditor(
-                                  controller: quill.QuillController(
-                                    document: quill.Document.fromDelta(
-                                      ev.details,
-                                    ),
-                                    selection: TextSelection.collapsed(
-                                      offset: 0,
-                                    ),
-                                  ),
-                                  readOnly: true,
-                                  scrollable: false,
-                                  autoFocus: false,
-                                  focusNode: FocusNode(),
-                                  expands: false,
-                                  padding: EdgeInsets.zero,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(ev.subject, style: styleTitle),
+                                    SizedBox(height: 4),
+                                    Text(ev.subtitle, style: styleSubtitle),
+                                    SizedBox(height: 4),
+                                    ...ev.body
+                                        .split('\n')
+                                        .map((l) => Text(l, style: styleBody)),
+                                  ],
                                 ),
                               ),
                             ),
@@ -142,11 +130,11 @@ class DayDetailPage extends StatelessWidget {
             ),
           ),
 
-          // Reflection back at the bottom
+          // Reflection
           Container(
             height: 100,
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.all(12),
+            margin: EdgeInsets.all(8),
+            padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade400),
               borderRadius: BorderRadius.circular(8),

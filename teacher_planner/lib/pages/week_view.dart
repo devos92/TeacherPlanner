@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_box_transform/flutter_box_transform.dart';
+import 'package:super_editor/super_editor.dart';
+
 import 'add_event_page.dart';
 import 'lesson_detail_page.dart';
 import 'day_detail_page.dart';
@@ -11,11 +13,11 @@ class EventBlock {
   String day;
   String subject; // Title
   String subtitle; // Sub‑header
-  String body; // Multiline details
+  String body; // our editable text
   Color color;
   int startHour;
-  int duration;
   double widthFactor;
+  int duration; // in hours
 
   EventBlock({
     required this.day,
@@ -24,8 +26,8 @@ class EventBlock {
     this.body = '',
     required this.color,
     required this.startHour,
-    this.duration = 1,
     this.widthFactor = 1.0,
+    this.duration = 1,
   });
 }
 

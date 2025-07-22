@@ -1,8 +1,8 @@
-/// lib/pages/add_event_page.dart
+// lib/pages/add_event_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:flutter_quill/flutter_quill.dart' as quill;
-import 'week_view.dart'; // EventBlock
+import 'package:super_editor/super_editor.dart';
+import 'week_view.dart';
 
 class AddEventPage extends StatefulWidget {
   final EventBlock? event;
@@ -15,19 +15,23 @@ class AddEventPage extends StatefulWidget {
 class _AddEventPageState extends State<AddEventPage> {
   final _formKey = GlobalKey<FormState>();
 
-  // core fields
+  // Form fields
   late String _day;
-  late int _startHour;
   late String _subject;
+  late String _subtitle;
+  late String _body;
+  late int _startHour;
   late Color _color;
 
-  // rich‑text controller
-  late quill.QuillController _quillController;
+  // Super Editor pieces
+  late final MutableDocument _doc;
+  late final DocumentEditor _docEditor;
+  late final DocumentComposer _composer;
 
-  // pickers data
-  final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  final hours = List.generate(24, (i) => i);
-  final palette = [
+  // Pickers data
+  final List<String> days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  final List<int> hours = List.generate(24, (i) => i);
+  final List<Color> palette = [
     Colors.blue,
     Colors.red,
     Colors.green,
@@ -38,97 +42,174 @@ class _AddEventPageState extends State<AddEventPage> {
   @override
   void initState() {
     super.initState();
-    // if editing, prefill; else defaults
+
     if (widget.event != null) {
+      // Editing an existing event
       final ev = widget.event!;
       _day = ev.day;
-      _startHour = ev.startHour;
       _subject = ev.subject;
+      _subtitle = ev.subtitle;
+      _body = ev.body;
+      _startHour = ev.startHour;
       _color = ev.color;
-      // initialize quill with existing HTML (we store details as plain Delta)
-      _quillController = quill.QuillController(
-        document: quill.Document.fromDelta(ev.detailsDelta ?? quill.Delta()),
-        selection: TextSelection.collapsed(offset: 0),
+      _doc = MutableDocument(
+        nodes: [
+          for (var line in _body.split('\n'))
+            ParagraphNode(
+              id: DocumentEditor.createNodeId(),
+              text: AttributedText(line),
+            ),
+        ],
       );
     } else {
-      _day = 'Mon';
-      _startHour = 6;
+      // Creating a new event
+      _day = days.first;
       _subject = '';
+      _subtitle = '';
+      _body = '';
+      _startHour = hours.first;
       _color = palette.first;
-      _quillController = quill.QuillController.basic();
+      _doc = MutableDocument(
+        nodes: [
+          ParagraphNode(
+            id: DocumentEditor.createNodeId(),
+            text: AttributedText(''),
+          ),
+        ],
+      );
+    }
+
+    _docEditor = DocumentEditor(document: _doc);
+    _composer = DocumentComposer();
+  }
+
+  void _save() {
+    // Serialize document back to plain text
+    final buffer = StringBuffer();
+    for (var node in _doc.nodes) {
+      if (node is ParagraphNode) {
+        buffer.writeln(node.text.text);
+      }
+    }
+    _body = buffer.toString().trimRight();
+
+    if (!_formKey.currentState!.validate()) return;
+    _formKey.currentState!.save();
+
+    if (widget.event != null) {
+      // Update existing
+      final ev = widget.event!;
+      ev
+        ..day = _day
+        ..subject = _subject
+        ..subtitle = _subtitle
+        ..body = _body
+        ..startHour = _startHour
+        ..color = _color;
+      Navigator.pop(context);
+    } else {
+      // Create new
+      Navigator.pop(
+        context,
+        EventBlock(
+          day: _day,
+          subject: _subject,
+          subtitle: _subtitle,
+          body: _body,
+          color: _color,
+          startHour: _startHour,
+          duration: 1, // default duration
+        ),
+      );
     }
   }
 
   @override
-  void dispose() {
-    _quillController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.event == null ? 'Add Event' : 'Edit Event'),
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: 16,
+        right: 16,
+        top: 16,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      child: SingleChildScrollView(
         child: Form(
           key: _formKey,
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Subject
+              // Title
               TextFormField(
                 initialValue: _subject,
-                decoration: InputDecoration(labelText: 'Subject'),
-                validator: (v) => (v?.isEmpty ?? true) ? 'Enter subject' : null,
+                decoration: InputDecoration(labelText: 'Title'),
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                 onSaved: (v) => _subject = v!,
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 8),
 
-              // Day picker
-              DropdownButtonFormField<String>(
-                value: _day,
-                decoration: InputDecoration(labelText: 'Day'),
-                items: days
-                    .map((d) => DropdownMenuItem(value: d, child: Text(d)))
-                    .toList(),
-                onChanged: (v) => setState(() => _day = v!),
+              // Subtitle
+              TextFormField(
+                initialValue: _subtitle,
+                decoration: InputDecoration(labelText: 'Subtitle'),
+                onSaved: (v) => _subtitle = v ?? '',
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 8),
 
-              // Start hour picker
-              DropdownButtonFormField<int>(
-                value: _startHour,
-                decoration: InputDecoration(labelText: 'Start Hour'),
-                items: hours
-                    .map(
-                      (h) => DropdownMenuItem(value: h, child: Text('$h:00')),
-                    )
-                    .toList(),
-                onChanged: (v) => setState(() => _startHour = v!),
+              // Day & Start Hour pickers
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _day,
+                      decoration: InputDecoration(labelText: 'Day'),
+                      items: days
+                          .map(
+                            (d) => DropdownMenuItem(value: d, child: Text(d)),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _day = v!),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: DropdownButtonFormField<int>(
+                      value: _startHour,
+                      decoration: InputDecoration(labelText: 'Start Hour'),
+                      items: hours
+                          .map(
+                            (h) => DropdownMenuItem(
+                              value: h,
+                              child: Text('$h:00'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _startHour = v!),
+                    ),
+                  ),
+                ],
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 8),
 
               // Color picker
               Row(
                 children: [
-                  Text('Color:', style: Theme.of(context).textTheme.bodyLarge),
-                  SizedBox(width: 12),
+                  Text('Color:'),
+                  SizedBox(width: 8),
                   Wrap(
                     spacing: 8,
                     children: palette.map((c) {
-                      final sel = c == _color;
+                      final selected = c == _color;
                       return GestureDetector(
                         onTap: () => setState(() => _color = c),
                         child: Container(
-                          width: 30,
-                          height: 30,
+                          width: 24,
+                          height: 24,
                           decoration: BoxDecoration(
                             color: c,
                             border: Border.all(
-                              color: sel ? Colors.black : Colors.grey,
-                              width: sel ? 3 : 1,
+                              color: selected ? Colors.black : Colors.grey,
+                              width: selected ? 3 : 1,
                             ),
                             borderRadius: BorderRadius.circular(4),
                           ),
@@ -140,63 +221,25 @@ class _AddEventPageState extends State<AddEventPage> {
               ),
               SizedBox(height: 16),
 
-              // Rich‑text editor toolbar
-              quill.QuillToolbar.basic(controller: _quillController),
+              // Super Editor toolbar
+              EditorToolbar.basic(editor: _docEditor, composer: _composer),
               SizedBox(height: 8),
 
-              // Rich‑text editor
-              Expanded(
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  padding: const EdgeInsets.all(8),
-                  child: quill.QuillEditor(
-                    controller: _quillController,
-                    readOnly: false,
-                    scrollController: ScrollController(),
-                    scrollable: true,
-                    focusNode: FocusNode(),
-                    autoFocus: false,
-                    expands: true,
-                    padding: EdgeInsets.zero,
-                  ),
+              // Super Editor editing area
+              SizedBox(
+                height: 200,
+                child: SingleColumnDocumentEditor(
+                  document: _doc,
+                  editor: _docEditor,
+                  composer: _composer,
+                  padding: EdgeInsets.all(8),
                 ),
               ),
-
               SizedBox(height: 16),
-              ElevatedButton(
-                child: Text('Save'),
-                onPressed: () {
-                  if (!_formKey.currentState!.validate()) return;
-                  _formKey.currentState!.save();
 
-                  final delta = _quillController.document.toDelta();
-                  if (widget.event != null) {
-                    // update
-                    final ev = widget.event!;
-                    ev
-                      ..day = _day
-                      ..startHour = _startHour
-                      ..subject = _subject
-                      ..color = _color
-                      ..detailsDelta = delta;
-                    Navigator.pop(context);
-                  } else {
-                    // create new
-                    final newEv = EventBlock(
-                      day: _day,
-                      subject: _subject,
-                      detailsDelta: delta,
-                      color: _color,
-                      startHour: _startHour,
-                      duration: 1, // default, ignored in day‑detail
-                    );
-                    Navigator.pop(context, newEv);
-                  }
-                },
-              ),
+              // Save button
+              ElevatedButton(onPressed: _save, child: Text('Save')),
+              SizedBox(height: 16),
             ],
           ),
         ),
