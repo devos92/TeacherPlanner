@@ -57,7 +57,6 @@ class _DayDetailPageState extends State<DayDetailPage>
       ),
       body: Column(
         children: [
-          // 1) Animated timeline area
           Expanded(
             child: FadeTransition(
               opacity: _fadeIn,
@@ -76,14 +75,14 @@ class _DayDetailPageState extends State<DayDetailPage>
                             end: Offset.zero,
                           ).animate(_fadeIn),
                           child: Card(
-                            margin: const EdgeInsets.all(8),
+                            margin: const EdgeInsets.all(0),
                             elevation: 2,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(2),
                             ),
-                            child: Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16.0),
+                            child: Padding(
+                              padding: const EdgeInsets.all(0),
+                              child: Center(
                                 child: Text(
                                   'AUS curriculum',
                                   style: theme.textTheme.titleMedium,
@@ -114,7 +113,7 @@ class _DayDetailPageState extends State<DayDetailPage>
                         ),
                       ),
 
-                      // Timeline panel with draggable/resizable events
+                      // Timeline with side-by-side event blocks
                       Expanded(
                         flex: 3,
                         child: SlideTransition(
@@ -133,6 +132,33 @@ class _DayDetailPageState extends State<DayDetailPage>
                               child: LayoutBuilder(
                                 builder: (ctx, cons) {
                                   final timelineW = cons.maxWidth;
+                                  final dayEvents = widget.events.toList()
+                                    ..sort(
+                                      (a, b) =>
+                                          a.startHour.compareTo(b.startHour),
+                                    );
+                                  List<List<EventBlock>> columns = [];
+                                  for (var ev in dayEvents) {
+                                    bool placed = false;
+                                    for (var col in columns) {
+                                      bool overlap = col.any((e) {
+                                        final startA = e.startHour;
+                                        final endA = e.startHour + e.duration;
+                                        final startB = ev.startHour;
+                                        final endB = ev.startHour + ev.duration;
+                                        return !(endB <= startA ||
+                                            startB >= endA);
+                                      });
+                                      if (!overlap) {
+                                        col.add(ev);
+                                        placed = true;
+                                        break;
+                                      }
+                                    }
+                                    if (!placed) {
+                                      columns.add([ev]);
+                                    }
+                                  }
                                   return Stack(
                                     children: [
                                       // Grid lines
@@ -146,67 +172,76 @@ class _DayDetailPageState extends State<DayDetailPage>
                                           ),
                                         ),
 
-                                      // Transformable event blocks
-                                      for (var ev in widget.events)
-                                        TransformableBox(
-                                          rect: Rect.fromLTWH(
-                                            0,
-                                            (ev.startHour - startHour) *
-                                                hourHeight,
-                                            timelineW,
-                                            ev.duration * hourHeight,
-                                          ),
-                                          clampingRect:
-                                              Offset.zero &
-                                              Size(timelineW, dayHeight),
-                                          enabledHandles: {
-                                            HandlePosition.top,
-                                            HandlePosition.bottom,
-                                          },
-                                          visibleHandles: {
-                                            HandlePosition.top,
-                                            HandlePosition.bottom,
-                                          },
-                                          allowFlippingWhileResizing: false,
-                                          onChanged: (res, _) {
-                                            setState(() {
-                                              final r = res.rect;
-                                              ev.startHour =
-                                                  startHour +
-                                                  (r.top / hourHeight).round();
-                                              ev.duration =
-                                                  (r.height / hourHeight)
-                                                      .round();
-                                            });
-                                          },
-                                          contentBuilder:
-                                              (context, rect, flip) {
-                                                return Container(
-                                                  width: rect.width,
-                                                  height: rect.height,
-                                                  decoration: BoxDecoration(
-                                                    color: ev.color,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          8,
-                                                        ),
-                                                  ),
-                                                  child: Center(
-                                                    child: Text(
-                                                      ev.subject,
-                                                      style: theme
-                                                          .textTheme
-                                                          .bodyMedium
-                                                          ?.copyWith(
-                                                            color: Colors.white,
-                                                            fontWeight:
-                                                                FontWeight.bold,
+                                      // Side-by-side TransformableBox blocks
+                                      for (
+                                        int colIndex = 0;
+                                        colIndex < columns.length;
+                                        colIndex++
+                                      )
+                                        for (var ev in columns[colIndex])
+                                          TransformableBox(
+                                            rect: Rect.fromLTWH(
+                                              colIndex *
+                                                  (timelineW / columns.length),
+                                              (ev.startHour - startHour) *
+                                                  hourHeight,
+                                              timelineW / columns.length,
+                                              ev.duration * hourHeight,
+                                            ),
+                                            clampingRect:
+                                                Offset.zero &
+                                                Size(timelineW, dayHeight),
+                                            enabledHandles: {
+                                              HandlePosition.top,
+                                              HandlePosition.bottom,
+                                            },
+                                            visibleHandles: {
+                                              HandlePosition.top,
+                                              HandlePosition.bottom,
+                                            },
+                                            allowFlippingWhileResizing: false,
+                                            onChanged: (res, _) {
+                                              setState(() {
+                                                final r = res.rect;
+                                                ev.startHour =
+                                                    startHour +
+                                                    (r.top / hourHeight)
+                                                        .round();
+                                                ev.duration =
+                                                    (r.height / hourHeight)
+                                                        .round();
+                                              });
+                                            },
+                                            contentBuilder:
+                                                (context, rect, flip) {
+                                                  return Container(
+                                                    width: rect.width,
+                                                    height: rect.height,
+                                                    decoration: BoxDecoration(
+                                                      color: ev.color,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            8,
                                                           ),
                                                     ),
-                                                  ),
-                                                );
-                                              },
-                                        ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        ev.subject,
+                                                        style: theme
+                                                            .textTheme
+                                                            .bodyMedium
+                                                            ?.copyWith(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .bold,
+                                                            ),
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                          ),
                                     ],
                                   );
                                 },
@@ -228,14 +263,14 @@ class _DayDetailPageState extends State<DayDetailPage>
             child: SizedBox(
               height: 100,
               child: Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(8),
                 child: Card(
                   elevation: 2,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.all(12.0),
+                    padding: const EdgeInsets.all(12),
                     child: TextField(
                       decoration: InputDecoration.collapsed(
                         hintText: 'Reflection',

@@ -150,15 +150,18 @@ class _WeekViewState extends State<WeekView> {
                         width: colW,
                         child: Column(
                           children: [
-                            // Tappable header
+                            // Tappable header with async navigation
                             SizedBox(
                               height: headerH,
                               child: InkWell(
                                 onTap: () async {
+                                  // Get the same EventBlock instances for this day
                                   final todayEvents = events
                                       .where((ev) => ev.day == day)
                                       .toList();
-                                  Navigator.push(
+
+                                  // Navigate and wait for the detail page to pop
+                                  await Navigator.push(
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => DayDetailPage(
@@ -167,8 +170,9 @@ class _WeekViewState extends State<WeekView> {
                                       ),
                                     ),
                                   );
+
+                                  // After returning, recompute and refresh
                                   setState(() {
-                                    // Refresh layouts after returning from day detail
                                     _computeLayouts();
                                   });
                                 },
