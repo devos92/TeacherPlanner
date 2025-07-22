@@ -42,14 +42,13 @@ packages:
     source: hosted
     version: "2.13.0"
   attributed_text:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: attributed_text
-      ref: stable
-      resolved-ref: "0867b968546e4ca60df3c7ca2817c87beed32e3a"
-      url: "https://github.com/superlistapp/super_editor.git"
-    source: git
-    version: "0.3.2"
+      name: attributed_text
+      sha256: "9d8bdc6e54387f31e52d2dcc3d93d656072582a44bcaa855c9ea8b3b2fa7abd3"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.4"
   barcode:
     dependency: transitive
     description:
@@ -345,14 +344,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.0"
-  markdown:
-    dependency: transitive
-    description:
-      name: markdown
-      sha256: "935e23e1ff3bc02d390bad4d4be001208ee92cc217cb5b5a6c19bc14aaa318c1"
-      url: "https://pub.dev"
-    source: hosted
-    version: "7.3.0"
   matcher:
     dependency: transitive
     description:
@@ -591,22 +582,14 @@ packages:
     source: hosted
     version: "1.4.1"
   super_editor:
-    dependency: transitive
+    dependency: "direct main"
     description:
-      name: super_editor
-      sha256: d11991494bc6a594c90e32476df00cf394dd882ec0c1f7342085cf683a510224
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.0-dev.27"
-  super_editor_markdown:
-    dependency: "direct overridden"
-    description:
-      path: super_editor_markdown
-      ref: stable
-      resolved-ref: "0867b968546e4ca60df3c7ca2817c87beed32e3a"
-      url: "https://github.com/superlistapp/super_editor.git"
+      path: super_editor
+      ref: main
+      resolved-ref: af4b2ca29e4dd5a0f495ddcde39f9fe6a2db2813
+      url: "https://github.com/superlistapp/super_editor"
     source: git
-    version: "0.1.5"
+    version: "0.3.0-dev.27"
   super_keyboard:
     dependency: transitive
     description:
@@ -616,14 +599,13 @@ packages:
     source: hosted
     version: "0.2.2"
   super_text_layout:
-    dependency: "direct overridden"
+    dependency: transitive
     description:
-      path: super_text_layout
-      ref: stable
-      resolved-ref: "0867b968546e4ca60df3c7ca2817c87beed32e3a"
-      url: "https://github.com/superlistapp/super_editor.git"
-    source: git
-    version: "0.1.15"
+      name: super_text_layout
+      sha256: "166b0eb846d186b349986619ddcbf5227f33ee216b7758dfa1e37b1a26a785ef"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.19"
   term_glyph:
     dependency: transitive
     description:

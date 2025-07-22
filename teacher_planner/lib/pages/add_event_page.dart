@@ -1,7 +1,6 @@
 // lib/pages/add_event_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:super_editor/super_editor.dart';
 import 'week_view.dart';
 
 class AddEventPage extends StatefulWidget {
@@ -16,22 +15,16 @@ class _AddEventPageState extends State<AddEventPage> {
   final _formKey = GlobalKey<FormState>();
 
   // Form fields
-  late String _day;
-  late String _subject;
-  late String _subtitle;
-  late String _body;
-  late int _startHour;
+  late String _day, _subject, _subtitle, _body;
+  late int _startHour, _duration;
   late Color _color;
 
-  // Super Editor pieces
-  late final MutableDocument _doc;
-  late final DocumentEditor _docEditor;
-  late final DocumentComposer _composer;
+  late TextEditingController _bodyController;
 
-  // Pickers data
-  final List<String> days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  final List<int> hours = List.generate(24, (i) => i);
-  final List<Color> palette = [
+  final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  final hours = List.generate(24, (i) => i);
+  final durations = List.generate(8, (i) => i + 1);
+  final palette = [
     Colors.blue,
     Colors.red,
     Colors.green,
@@ -42,62 +35,33 @@ class _AddEventPageState extends State<AddEventPage> {
   @override
   void initState() {
     super.initState();
-
     if (widget.event != null) {
-      // Editing an existing event
       final ev = widget.event!;
       _day = ev.day;
       _subject = ev.subject;
       _subtitle = ev.subtitle;
       _body = ev.body;
       _startHour = ev.startHour;
+      _duration = ev.duration;
       _color = ev.color;
-      _doc = MutableDocument(
-        nodes: [
-          for (var line in _body.split('\n'))
-            ParagraphNode(
-              id: DocumentEditor.createNodeId(),
-              text: AttributedText(line),
-            ),
-        ],
-      );
     } else {
-      // Creating a new event
       _day = days.first;
       _subject = '';
       _subtitle = '';
       _body = '';
       _startHour = hours.first;
+      _duration = durations.first;
       _color = palette.first;
-      _doc = MutableDocument(
-        nodes: [
-          ParagraphNode(
-            id: DocumentEditor.createNodeId(),
-            text: AttributedText(''),
-          ),
-        ],
-      );
     }
-
-    _docEditor = DocumentEditor(document: _doc);
-    _composer = DocumentComposer();
+    _bodyController = TextEditingController(text: _body);
   }
 
   void _save() {
-    // Serialize document back to plain text
-    final buffer = StringBuffer();
-    for (var node in _doc.nodes) {
-      if (node is ParagraphNode) {
-        buffer.writeln(node.text.text);
-      }
-    }
-    _body = buffer.toString().trimRight();
-
+    _body = _bodyController.text;
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
     if (widget.event != null) {
-      // Update existing
       final ev = widget.event!;
       ev
         ..day = _day
@@ -105,10 +69,10 @@ class _AddEventPageState extends State<AddEventPage> {
         ..subtitle = _subtitle
         ..body = _body
         ..startHour = _startHour
+        ..duration = _duration
         ..color = _color;
       Navigator.pop(context);
     } else {
-      // Create new
       Navigator.pop(
         context,
         EventBlock(
@@ -118,131 +82,245 @@ class _AddEventPageState extends State<AddEventPage> {
           body: _body,
           color: _color,
           startHour: _startHour,
-          duration: 1, // default duration
+          duration: _duration,
         ),
       );
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 16,
-        right: 16,
-        top: 16,
+  Widget build(BuildContext ctx) {
+    final theme = Theme.of(ctx);
+    return Container(
+      height: MediaQuery.of(ctx).size.height * 0.8,
+      decoration: BoxDecoration(
+        color: theme.dialogBackgroundColor,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      child: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Title
-              TextFormField(
-                initialValue: _subject,
-                decoration: InputDecoration(labelText: 'Title'),
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                onSaved: (v) => _subject = v!,
+      child: Column(
+        children: [
+          // Drag handle
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: BorderRadius.circular(2),
               ),
-              SizedBox(height: 8),
-
-              // Subtitle
-              TextFormField(
-                initialValue: _subtitle,
-                decoration: InputDecoration(labelText: 'Subtitle'),
-                onSaved: (v) => _subtitle = v ?? '',
-              ),
-              SizedBox(height: 8),
-
-              // Day & Start Hour pickers
-              Row(
-                children: [
-                  Expanded(
-                    child: DropdownButtonFormField<String>(
-                      value: _day,
-                      decoration: InputDecoration(labelText: 'Day'),
-                      items: days
-                          .map(
-                            (d) => DropdownMenuItem(value: d, child: Text(d)),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => _day = v!),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: DropdownButtonFormField<int>(
-                      value: _startHour,
-                      decoration: InputDecoration(labelText: 'Start Hour'),
-                      items: hours
-                          .map(
-                            (h) => DropdownMenuItem(
-                              value: h,
-                              child: Text('$h:00'),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Section: Lesson Info
+                    Text('Lesson Info', style: theme.textTheme.headline6),
+                    const SizedBox(height: 8),
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              initialValue: _subject,
+                              decoration: InputDecoration(
+                                labelText: 'Title',
+                                border: OutlineInputBorder(),
+                              ),
+                              validator: (v) =>
+                                  v == null || v.isEmpty ? 'Required' : null,
+                              onSaved: (v) => _subject = v!,
                             ),
-                          )
-                          .toList(),
-                      onChanged: (v) => setState(() => _startHour = v!),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-
-              // Color picker
-              Row(
-                children: [
-                  Text('Color:'),
-                  SizedBox(width: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: palette.map((c) {
-                      final selected = c == _color;
-                      return GestureDetector(
-                        onTap: () => setState(() => _color = c),
-                        child: Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: c,
-                            border: Border.all(
-                              color: selected ? Colors.black : Colors.grey,
-                              width: selected ? 3 : 1,
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              initialValue: _subtitle,
+                              decoration: InputDecoration(
+                                labelText: 'Subtitle',
+                                border: OutlineInputBorder(),
+                              ),
+                              onSaved: (v) => _subtitle = v ?? '',
                             ),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+                          ],
                         ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-              SizedBox(height: 16),
+                      ),
+                    ),
 
-              // Super Editor toolbar
-              EditorToolbar.basic(editor: _docEditor, composer: _composer),
-              SizedBox(height: 8),
+                    const SizedBox(height: 16),
 
-              // Super Editor editing area
-              SizedBox(
-                height: 200,
-                child: SingleColumnDocumentEditor(
-                  document: _doc,
-                  editor: _docEditor,
-                  composer: _composer,
-                  padding: EdgeInsets.all(8),
+                    // Section: Schedule
+                    Text('Schedule', style: theme.textTheme.subtitle1),
+                    const SizedBox(height: 8),
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            // Day
+                            Expanded(
+                              child: DropdownButtonFormField<String>(
+                                value: _day,
+                                decoration: InputDecoration(
+                                  labelText: 'Day',
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: days
+                                    .map(
+                                      (d) => DropdownMenuItem(
+                                        value: d,
+                                        child: Text(d),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) => setState(() => _day = v!),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Start Hour
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                value: _startHour,
+                                decoration: InputDecoration(
+                                  labelText: 'Start Hour',
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: hours
+                                    .map(
+                                      (h) => DropdownMenuItem(
+                                        value: h,
+                                        child: Text('$h:00'),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) =>
+                                    setState(() => _startHour = v!),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Duration
+                            Expanded(
+                              child: DropdownButtonFormField<int>(
+                                value: _duration,
+                                decoration: InputDecoration(
+                                  labelText: 'Duration',
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: durations
+                                    .map(
+                                      (d) => DropdownMenuItem(
+                                        value: d,
+                                        child: Text('$d h'),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (v) =>
+                                    setState(() => _duration = v!),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Section: Details
+                    Text('Details', style: theme.textTheme.subtitle1),
+                    const SizedBox(height: 8),
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: TextFormField(
+                          controller: _bodyController,
+                          decoration: InputDecoration(
+                            labelText: 'Lesson plan details',
+                            alignLabelWithHint: true,
+                            border: OutlineInputBorder(),
+                          ),
+                          maxLines: 6,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Section: Color
+                    Text('Color', style: theme.textTheme.subtitle1),
+                    const SizedBox(height: 8),
+                    Card(
+                      elevation: 2,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Wrap(
+                          spacing: 12,
+                          children: palette.map((c) {
+                            final selected = c == _color;
+                            return GestureDetector(
+                              onTap: () => setState(() => _color = c),
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: c,
+                                  border: Border.all(
+                                    color: selected
+                                        ? Colors.black
+                                        : Colors.white,
+                                    width: selected ? 3 : 1,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // Save button
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: _save,
+                      child: Text(
+                        'Save Lesson',
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ),
+
+                    SizedBox(height: MediaQuery.of(ctx).viewInsets.bottom + 16),
+                  ],
                 ),
               ),
-              SizedBox(height: 16),
-
-              // Save button
-              ElevatedButton(onPressed: _save, child: Text('Save')),
-              SizedBox(height: 16),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
