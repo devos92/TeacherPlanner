@@ -5,23 +5,26 @@ import 'package:flutter_box_transform/flutter_box_transform.dart';
 import 'add_event_page.dart';
 import 'lesson_detail_page.dart';
 import 'day_detail_page.dart';
-import 'dart:math';
 
 /// Mutable event model to support resizing and width adjustment
 class EventBlock {
   String day;
-  String subject;
+  String subject; // Title
+  String subtitle; // Sub‑header
+  String body; // Multiline details
   Color color;
   int startHour;
-  int duration; // in hours
-  double widthFactor; // fraction of column width (0.0 - 1.0)
+  int duration;
+  double widthFactor;
 
   EventBlock({
     required this.day,
     required this.subject,
+    this.subtitle = '',
+    this.body = '',
     required this.color,
     required this.startHour,
-    required this.duration,
+    this.duration = 1,
     this.widthFactor = 1.0,
   });
 }
@@ -69,9 +72,9 @@ class _WeekViewState extends State<WeekView> {
         for (var col in columns) {
           bool overlap = col.any((e) {
             final aStart = e.startHour;
-            final aEnd = e.startHour + e.duration;
+            final aEnd = aStart + e.duration;
             final bStart = ev.startHour;
-            final bEnd = ev.startHour + ev.duration;
+            final bEnd = bStart + ev.duration;
             return !(bEnd <= aStart || bStart >= aEnd);
           });
           if (!overlap) {
@@ -119,7 +122,7 @@ class _WeekViewState extends State<WeekView> {
 
           return Row(
             children: [
-              // Time labels
+              // Time labels (non-scrollable)
               SizedBox(
                 width: timeLabelW,
                 height: constraints.maxHeight,
@@ -150,17 +153,14 @@ class _WeekViewState extends State<WeekView> {
                         width: colW,
                         child: Column(
                           children: [
-                            // Tappable header with async navigation
+                            // Day header, tappable to open DayDetailPage
                             SizedBox(
                               height: headerH,
                               child: InkWell(
                                 onTap: () async {
-                                  // Get the same EventBlock instances for this day
                                   final todayEvents = events
-                                      .where((ev) => ev.day == day)
+                                      .where((e) => e.day == day)
                                       .toList();
-
-                                  // Navigate and wait for the detail page to pop
                                   await Navigator.push(
                                     context,
                                     MaterialPageRoute(
@@ -170,8 +170,6 @@ class _WeekViewState extends State<WeekView> {
                                       ),
                                     ),
                                   );
-
-                                  // After returning, recompute and refresh
                                   setState(() {
                                     _computeLayouts();
                                   });
@@ -187,11 +185,11 @@ class _WeekViewState extends State<WeekView> {
                               ),
                             ),
 
-                            // Grid + resizable/draggable event boxes
+                            // Events grid
                             Expanded(
                               child: Stack(
                                 children: [
-                                  // Grid background
+                                  // Grid background lines
                                   Column(
                                     children: List.generate(
                                       totalH,
@@ -208,18 +206,18 @@ class _WeekViewState extends State<WeekView> {
                                     ),
                                   ),
 
-                                  // Event boxes
+                                  // Transformable and tappable event boxes
                                   ...layouts.map((layout) {
                                     final e = layout.event;
                                     final baseW = colW / layout.totalCols;
-                                    final barLeft = layout.colIndex * baseW;
+                                    final left = layout.colIndex * baseW;
                                     final top =
                                         (e.startHour - startHour) * slotH;
                                     final height = e.duration * slotH;
 
                                     return TransformableBox(
                                       rect: Rect.fromLTWH(
-                                        barLeft,
+                                        left,
                                         top,
                                         baseW * e.widthFactor,
                                         height,
@@ -239,10 +237,9 @@ class _WeekViewState extends State<WeekView> {
                                         HandlePosition.bottom,
                                       },
                                       allowFlippingWhileResizing: false,
-
-                                      onChanged: (result, _) {
+                                      onChanged: (res, _) {
                                         setState(() {
-                                          final r = result.rect;
+                                          final r = res.rect;
                                           e.startHour =
                                               startHour +
                                               (r.top / slotH).round();
@@ -251,45 +248,71 @@ class _WeekViewState extends State<WeekView> {
                                           _computeLayouts();
                                         });
                                       },
+                                      contentBuilder: (ctx, rect, flip) {
+                                        return GestureDetector(
+                                          onTap: () async {
+                                            await showModalBottomSheet<void>(
+                                              context: context,
+                                              isScrollControlled: true,
+                                              builder: (ctx) => Padding(
+                                                padding: EdgeInsets.only(
+                                                  bottom: MediaQuery.of(
+                                                    ctx,
+                                                  ).viewInsets.bottom,
+                                                ),
+                                                child: AddEventPage(event: e),
+                                              ),
+                                            );
+                                            setState(() {
+                                              _computeLayouts();
+                                            });
+                                          },
 
-                                      contentBuilder: (context, rect, flip) {
-                                        // Just a colored box sized by rect—no Positioned here!
-                                        return Container(
-                                          width: rect.width,
-                                          height: rect.height,
-                                          decoration: BoxDecoration(
-                                            color: e.color,
-                                            borderRadius: BorderRadius.circular(
-                                              6,
-                                            ),
-                                          ),
                                           child: Stack(
                                             children: [
-                                              // Tap to open lesson details
-                                              GestureDetector(
-                                                onTap: () async {
-                                                  await Navigator.push(
-                                                    context,
-                                                    MaterialPageRoute(
-                                                      builder: (_) =>
-                                                          LessonDetailPage(
-                                                            event: e,
+                                              // Box background + text
+                                              Container(
+                                                width: rect.width,
+                                                height: rect.height,
+                                                padding: EdgeInsets.all(4),
+                                                decoration: BoxDecoration(
+                                                  color: e.color,
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Text(
+                                                      e.subject,
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodyMedium!
+                                                          .copyWith(
+                                                            color: Colors.white,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                          ),
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                    ),
+                                                    SizedBox(height: 2),
+                                                    Text(
+                                                      'Duration: ${e.duration}h',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall!
+                                                          .copyWith(
+                                                            color:
+                                                                Colors.white70,
                                                           ),
                                                     ),
-                                                  );
-                                                },
-                                                child: Center(
-                                                  child: Text(
-                                                    e.subject,
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 12,
-                                                    ),
-                                                    textAlign: TextAlign.center,
-                                                  ),
+                                                  ],
                                                 ),
                                               ),
-
                                               // Delete button
                                               Positioned(
                                                 top: 2,
