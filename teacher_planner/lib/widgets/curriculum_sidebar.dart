@@ -41,13 +41,20 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   @override
   void initState() {
     super.initState();
-    selectedYearId = 'foundation';
+    // Don't set a default year until we have loaded the data
     _loadInitialData();
   }
 
   Future<void> _loadInitialData() async {
     await _loadYears();
     await _loadSubjects();
+    
+    // Set default year after loading
+    if (_years.isNotEmpty) {
+      setState(() {
+        selectedYearId = _years.first.id;
+      });
+    }
   }
 
   Future<void> _loadYears() async {
@@ -75,12 +82,16 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   }
 
   Future<void> _loadSubjects() async {
+    if (selectedYearId == null) return;
+
     setState(() {
       _isLoadingSubject = true;
     });
 
     try {
-      final subjects = await SupabaseCurriculumService.getSubjects();
+      // Get the year level name from the selected year ID
+      final yearLevel = _years.firstWhere((year) => year.id == selectedYearId).name;
+      final subjects = await SupabaseCurriculumService.getSubjectsForYear(yearLevel);
       setState(() {
         _subjects = subjects;
         _isLoadingSubject = false;
@@ -99,14 +110,16 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   }
 
   Future<void> _loadStrands() async {
-    if (selectedSubjectId == null) return;
+    if (selectedSubjectId == null || selectedYearId == null) return;
 
     setState(() {
       _isLoadingStrands = true;
     });
 
     try {
-      final strands = await SupabaseCurriculumService.getStrandsForSubject(selectedSubjectId!);
+      // Get the year level name from the selected year ID
+      final yearLevel = _years.firstWhere((year) => year.id == selectedYearId).name;
+      final strands = await SupabaseCurriculumService.getStrandsForSubjectAndYear(selectedSubjectId!, yearLevel);
       setState(() {
         _strands = strands;
         _isLoadingStrands = false;
@@ -132,9 +145,12 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
     });
 
     try {
+      // Convert year ID back to year level name for the query
+      final yearLevel = _years.firstWhere((year) => year.id == selectedYearId).name;
+      
       final outcomes = await SupabaseCurriculumService.getOutcomesForStrandAndYear(
         selectedStrandId!, 
-        selectedYearId!
+        yearLevel
       );
       setState(() {
         _outcomes = outcomes;
@@ -165,6 +181,7 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
 
     return Container(
       width: widget.width,
+      constraints: BoxConstraints(maxWidth: widget.width),
       decoration: BoxDecoration(
         color: theme.cardColor,
         border: Border(
@@ -307,170 +324,238 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   }
 
   Widget _buildExpandedView(ThemeData theme) {
-    return Column(
-      children: [
-        // Minimize Button
-        Container(
-          padding: EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Select Curriculum Outcomes',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _isExpanded = false;
-                  });
-                },
-                icon: Icon(Icons.minimize),
-                tooltip: 'Minimize',
-              ),
-            ],
-          ),
-        ),
-
-        // Year Selection
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Year Level',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: selectedYearId,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                ),
-                items: _years.map((year) {
-                  return DropdownMenuItem(
-                    value: year.id,
-                    child: Text(
-                      year.name,
-                      overflow: TextOverflow.ellipsis,
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Minimize Button
+          Container(
+            padding: EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Select Curriculum Outcomes',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    selectedYearId = value;
-                    selectedSubjectId = null;
-                    selectedStrandId = null;
-                    _strands = [];
-                    _outcomes = [];
-                  });
-                },
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isExpanded = false;
+                    });
+                  },
+                  icon: Icon(Icons.minimize),
+                  tooltip: 'Minimize',
+                ),
+              ],
+            ),
+          ),
+
+          // Year Selection
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Year Level',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                if (_years.isNotEmpty)
+                  DropdownButtonFormField<String>(
+                    value: selectedYearId,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: _years.map((year) {
+                      return DropdownMenuItem(
+                        value: year.id,
+                        child: Text(
+                          year.name,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedYearId = value;
+                        selectedSubjectId = null;
+                        selectedStrandId = null;
+                        _strands = [];
+                        _outcomes = [];
+                      });
+                      // Load subjects for the selected year
+                      _loadSubjects();
+                    },
+                  )
+                else
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: _isLoadingYear 
+                      ? Row(
+                          children: [
+                            SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                            SizedBox(width: 8),
+                            Text('Loading years...'),
+                          ],
+                        )
+                      : Text('No years available'),
+                  ),
+              ],
+            ),
+          ),
+
+          SizedBox(height: 16),
+
+          // Subject Selection
+          if (_subjects.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Subject',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedSubjectId,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: _subjects.map((subject) {
+                      return DropdownMenuItem(
+                        value: subject.id,
+                        child: Text(
+                          subject.name,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedSubjectId = value;
+                        selectedStrandId = null;
+                        _strands = [];
+                        _outcomes = [];
+                      });
+                      _loadStrands();
+                    },
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-
-        SizedBox(height: 16),
-
-        // Subject Selection
-        if (_subjects.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Subject',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+            )
+          else if (!_isLoadingSubject)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Subject',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: selectedSubjectId,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text('No subjects available'),
                   ),
-                  items: _subjects.map((subject) {
-                    return DropdownMenuItem(
-                      value: subject.id,
-                      child: Text(
-                        subject.name,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedSubjectId = value;
-                      selectedStrandId = null;
-                      _strands = [];
-                      _outcomes = [];
-                    });
-                    _loadStrands();
-                  },
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
 
-        SizedBox(height: 16),
+          SizedBox(height: 16),
 
-        // Strand Selection
-        if (_strands.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Strand',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
+          // Strand Selection
+          if (_strands.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Strand',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  value: selectedStrandId,
-                  decoration: InputDecoration(
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  SizedBox(height: 8),
+                  DropdownButtonFormField<String>(
+                    value: selectedStrandId,
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(),
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: _strands.map((strand) {
+                      return DropdownMenuItem(
+                        value: strand.id,
+                        child: Text(
+                          strand.name,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedStrandId = value;
+                        _outcomes = [];
+                      });
+                      _loadOutcomes();
+                    },
                   ),
-                  items: _strands.map((strand) {
-                    return DropdownMenuItem(
-                      value: strand.id,
-                      child: Text(
-                        strand.name,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedStrandId = value;
-                      _outcomes = [];
-                    });
-                    _loadOutcomes();
-                  },
-                ),
-              ],
+                ],
+              ),
+            )
+          else if (selectedSubjectId != null && !_isLoadingStrands)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Strand',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 8),
+                  Container(
+                    padding: EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text('No strands available for this subject'),
+                  ),
+                ],
+              ),
             ),
-          ),
 
-        SizedBox(height: 16),
+          SizedBox(height: 16),
 
-        // Outcomes List
-        if (_outcomes.isNotEmpty)
-          Expanded(
-            child: Column(
+          // Outcomes List
+          if (_outcomes.isNotEmpty)
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
@@ -483,7 +568,8 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                   ),
                 ),
                 SizedBox(height: 8),
-                Expanded(
+                Container(
+                  height: 300, // Fixed height for outcomes list
                   child: ListView.builder(
                     padding: EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _outcomes.length,
@@ -525,27 +611,32 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                   ),
                 ),
               ],
-            ),
-          )
-        else if (_isLoadingOutcomes)
-          Expanded(
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
-          )
-        else if (selectedStrandId != null)
-          Expanded(
-            child: Center(
-              child: Text(
-                'No outcomes found for this strand and year level',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.grey.shade600,
+            )
+          else if (_isLoadingOutcomes)
+            Container(
+              height: 100,
+              child: Center(
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (selectedStrandId != null)
+            Container(
+              height: 100,
+              child: Center(
+                child: Text(
+                  'No outcomes found for this strand and year level',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.grey.shade600,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-                textAlign: TextAlign.center,
               ),
             ),
-          ),
-      ],
+
+          // Bottom padding
+          SizedBox(height: 20),
+        ],
+      ),
     );
   }
 

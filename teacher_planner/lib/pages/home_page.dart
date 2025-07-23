@@ -7,7 +7,6 @@ import 'week_view.dart';
 import 'month_view.dart';
 import 'day_view.dart';
 import 'enhanced_day_detail_page.dart';
-import 'mrac_upload_page.dart';
 import 'curriculum_browser_page.dart';
 
 class HomePage extends StatefulWidget {
@@ -75,22 +74,6 @@ class _HomePageState extends State<HomePage> {
           SizedBox(height: 8),
           FloatingActionButton(
             onPressed: () {
-              // Navigate to MRAC upload page
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MRACUploadPage(),
-                ),
-              );
-            },
-            child: Icon(Icons.cloud_upload),
-            tooltip: 'Upload MRAC Data',
-            heroTag: 'upload',
-            mini: true,
-          ),
-          SizedBox(height: 8),
-          FloatingActionButton(
-            onPressed: () {
               // Navigate to enhanced day detail page
               Navigator.push(
                 context,
@@ -102,9 +85,10 @@ class _HomePageState extends State<HomePage> {
                 ),
               );
             },
-            child: Icon(Icons.add),
-            tooltip: 'Add Event',
-            heroTag: 'add',
+            child: Icon(Icons.edit),
+            tooltip: 'Day Detail',
+            heroTag: 'day_detail',
+            mini: true,
           ),
         ],
       ),

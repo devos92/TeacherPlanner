@@ -110,8 +110,8 @@ class CurriculumService extends ChangeNotifier {
       final years = await SupabaseCurriculumService.getYears();
       final yearInfo = years.firstWhere((y) => y.id == yearLevel);
       
-      // Get all subjects
-      final subjects = await SupabaseCurriculumService.getSubjects();
+      // Get subjects for this specific year
+      final subjects = await SupabaseCurriculumService.getSubjectsForYear(yearInfo.name);
       
       // Convert to CurriculumYear format
       return CurriculumYear(
@@ -156,7 +156,8 @@ class CurriculumService extends ChangeNotifier {
   Future<List<CurriculumSubject>> fetchAllSubjects() async {
     try {
       if (_useSupabase) {
-        final subjects = await SupabaseCurriculumService.getSubjects();
+        // Get subjects for the default year level (Foundation to Year 10)
+        final subjects = await SupabaseCurriculumService.getSubjectsForYear('Foundation to Year 10');
         return subjects.map((s) => CurriculumSubject(
           id: s.id,
           name: s.name,
@@ -199,7 +200,7 @@ class CurriculumService extends ChangeNotifier {
     try {
       if (_useSupabase) {
         final years = await SupabaseCurriculumService.getYears();
-        final subjects = await SupabaseCurriculumService.getSubjects();
+        final subjects = await SupabaseCurriculumService.getSubjectsForYear('Foundation to Year 10');
         return {
           'supabase_connected': true,
           'data_source': 'Supabase',
