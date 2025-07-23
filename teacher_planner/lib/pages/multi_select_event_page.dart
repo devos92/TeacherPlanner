@@ -51,7 +51,7 @@ class _MultiSelectEventPageState extends State<MultiSelectEventPage> {
       _eventSlots.add(EventSlot(
         day: days.first,
         startHour: 9,
-        duration: 1,
+        finishHour: 10,
       ));
     });
   }
@@ -72,14 +72,29 @@ class _MultiSelectEventPageState extends State<MultiSelectEventPage> {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
 
-    if (_eventSlots.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please add at least one event slot')),
-      );
-      return;
+    // Validate all slots have valid times
+    for (var slot in _eventSlots) {
+      final startMinutes = slot.startHour * 60 + slot.startMinute;
+      final finishMinutes = slot.finishHour * 60 + slot.finishMinute;
+      
+      if (finishMinutes <= startMinutes) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Finish time must be after start time for ${slot.day}')),
+        );
+        return;
+      }
+
+      // Validate minimum duration of 15 minutes
+      final duration = finishMinutes - startMinutes;
+      if (duration < 15) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Events must be at least 15 minutes long for ${slot.day}')),
+        );
+        return;
+      }
     }
 
-    // Create events for each slot
+    // Create events from slots
     final events = _eventSlots.map((slot) => EventBlock(
       day: slot.day,
       subject: _subject,
@@ -87,7 +102,9 @@ class _MultiSelectEventPageState extends State<MultiSelectEventPage> {
       body: '',
       color: _color,
       startHour: slot.startHour,
-      duration: slot.duration,
+      startMinute: slot.startMinute,
+      finishHour: slot.finishHour,
+      finishMinute: slot.finishMinute,
     )).toList();
     
     Navigator.pop(context, events);
@@ -288,46 +305,100 @@ class _MultiSelectEventPageState extends State<MultiSelectEventPage> {
                         Row(
                           children: [
                             Expanded(
-                              child: DropdownButtonFormField<int>(
-                                value: slot.startHour,
+                              child: TextFormField(
+                                initialValue: slot.startHour.toString(),
                                 decoration: InputDecoration(
-                                  labelText: 'Start Time',
+                                  labelText: 'Start Hour (0-23)',
                                   border: OutlineInputBorder(),
                                 ),
-                                items: hours
-                                    .map(
-                                      (h) => DropdownMenuItem(
-                                        value: h,
-                                        child: Text('${h.toString().padLeft(2, '0')}:00'),
-                                      ),
-                                    )
-                                    .toList(),
+                                keyboardType: TextInputType.number,
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return 'Required';
+                                  final hour = int.tryParse(v);
+                                  if (hour == null || hour < 0 || hour > 23) {
+                                    return 'Enter 0-23';
+                                  }
+                                  return null;
+                                },
                                 onChanged: (v) {
-                                  if (v != null) {
-                                    _updateEventSlot(index, slot.copyWith(startHour: v));
+                                  final hour = int.tryParse(v);
+                                  if (hour != null && hour >= 0 && hour <= 23) {
+                                    _updateEventSlot(index, slot.copyWith(startHour: hour));
+                                  }
+                                },
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: slot.startMinute.toString(),
+                                decoration: InputDecoration(
+                                  labelText: 'Start Minute (0-59)',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return 'Required';
+                                  final minute = int.tryParse(v);
+                                  if (minute == null || minute < 0 || minute > 59) {
+                                    return 'Enter 0-59';
+                                  }
+                                  return null;
+                                },
+                                onChanged: (v) {
+                                  final minute = int.tryParse(v);
+                                  if (minute != null && minute >= 0 && minute <= 59) {
+                                    _updateEventSlot(index, slot.copyWith(startMinute: minute));
                                   }
                                 },
                               ),
                             ),
                             SizedBox(width: 16),
                             Expanded(
-                              child: DropdownButtonFormField<int>(
-                                value: slot.duration,
+                              child: TextFormField(
+                                initialValue: slot.finishHour.toString(),
                                 decoration: InputDecoration(
-                                  labelText: 'Duration',
+                                  labelText: 'Finish Hour (0-23)',
                                   border: OutlineInputBorder(),
                                 ),
-                                items: durations
-                                    .map(
-                                      (d) => DropdownMenuItem(
-                                        value: d,
-                                        child: Text('$d hour${d > 1 ? 's' : ''}'),
-                                      ),
-                                    )
-                                    .toList(),
+                                keyboardType: TextInputType.number,
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return 'Required';
+                                  final hour = int.tryParse(v);
+                                  if (hour == null || hour < 0 || hour > 23) {
+                                    return 'Enter 0-23';
+                                  }
+                                  return null;
+                                },
                                 onChanged: (v) {
-                                  if (v != null) {
-                                    _updateEventSlot(index, slot.copyWith(duration: v));
+                                  final hour = int.tryParse(v);
+                                  if (hour != null && hour >= 0 && hour <= 23) {
+                                    _updateEventSlot(index, slot.copyWith(finishHour: hour));
+                                  }
+                                },
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: TextFormField(
+                                initialValue: slot.finishMinute.toString(),
+                                decoration: InputDecoration(
+                                  labelText: 'Finish Minute (0-59)',
+                                  border: OutlineInputBorder(),
+                                ),
+                                keyboardType: TextInputType.number,
+                                validator: (v) {
+                                  if (v == null || v.isEmpty) return 'Required';
+                                  final minute = int.tryParse(v);
+                                  if (minute == null || minute < 0 || minute > 59) {
+                                    return 'Enter 0-59';
+                                  }
+                                  return null;
+                                },
+                                onChanged: (v) {
+                                  final minute = int.tryParse(v);
+                                  if (minute != null && minute >= 0 && minute <= 59) {
+                                    _updateEventSlot(index, slot.copyWith(finishMinute: minute));
                                   }
                                 },
                               ),
@@ -343,9 +414,9 @@ class _MultiSelectEventPageState extends State<MultiSelectEventPage> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            '${slot.day} at ${slot.startHour.toString().padLeft(2, '0')}:00 - ${(slot.startHour + slot.duration).toString().padLeft(2, '0')}:00',
+                            '${slot.day} at ${slot.startHour.toString().padLeft(2, '0')}:${slot.startMinute.toString().padLeft(2, '0')} - ${slot.finishHour.toString().padLeft(2, '0')}:${slot.finishMinute.toString().padLeft(2, '0')}',
                             style: TextStyle(
-                              color: _color.shade700,
+                              color: _color.withOpacity(0.8),
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -385,7 +456,7 @@ class _MultiSelectEventPageState extends State<MultiSelectEventPage> {
                         ..._eventSlots.map((slot) => Padding(
                           padding: EdgeInsets.only(bottom: 4),
                           child: Text(
-                            '• ${slot.day}: ${slot.startHour.toString().padLeft(2, '0')}:00 - ${(slot.startHour + slot.duration).toString().padLeft(2, '0')}:00',
+                            '• ${slot.day}: ${slot.startHour.toString().padLeft(2, '0')}:${slot.startMinute.toString().padLeft(2, '0')} - ${slot.finishHour.toString().padLeft(2, '0')}:${slot.finishMinute.toString().padLeft(2, '0')}',
                             style: theme.textTheme.bodySmall,
                           ),
                         )),
@@ -424,23 +495,31 @@ class _MultiSelectEventPageState extends State<MultiSelectEventPage> {
 class EventSlot {
   final String day;
   final int startHour;
-  final int duration;
+  final int startMinute; // Add minute support
+  final int finishHour;
+  final int finishMinute; // Add finish minute support
 
   EventSlot({
     required this.day,
     required this.startHour,
-    required this.duration,
+    this.startMinute = 0, // Default to 0 minutes
+    required this.finishHour,
+    this.finishMinute = 0, // Default to 0 minutes
   });
 
   EventSlot copyWith({
     String? day,
     int? startHour,
-    int? duration,
+    int? startMinute,
+    int? finishHour,
+    int? finishMinute,
   }) {
     return EventSlot(
       day: day ?? this.day,
       startHour: startHour ?? this.startHour,
-      duration: duration ?? this.duration,
+      startMinute: startMinute ?? this.startMinute,
+      finishHour: finishHour ?? this.finishHour,
+      finishMinute: finishMinute ?? this.finishMinute,
     );
   }
 } 

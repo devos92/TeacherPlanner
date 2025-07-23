@@ -17,11 +17,11 @@ class _EventDetailEditorState extends State<EventDetailEditor> {
   final _formKey = GlobalKey<FormState>();
   
   late String _day, _subject, _subtitle, _body;
-  late int _startHour, _duration;
+  late int _startHour, _finishHour;
+  late int _startMinute, _finishMinute; // Add minute support
   late Color _color;
 
   final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  final hours = List.generate(24, (i) => i);
   final durations = List.generate(8, (i) => i + 1);
   final palette = [
     Colors.blue,
@@ -45,13 +45,35 @@ class _EventDetailEditorState extends State<EventDetailEditor> {
     _subtitle = ev.subtitle;
     _body = ev.body;
     _startHour = ev.startHour;
-    _duration = ev.duration;
+    _startMinute = ev.startMinute; // Get minute from event
+    _finishHour = ev.finishHour;
+    _finishMinute = ev.finishMinute; // Get finish minute from event
     _color = ev.color;
   }
 
   void _save() {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
+
+    // Validate finish time is after start time
+    final startMinutes = _startHour * 60 + _startMinute;
+    final finishMinutes = _finishHour * 60 + _finishMinute;
+    
+    if (finishMinutes <= startMinutes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Finish time must be after start time')),
+      );
+      return;
+    }
+
+    // Validate minimum duration of 15 minutes
+    final duration = finishMinutes - startMinutes;
+    if (duration < 15) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Events must be at least 15 minutes long')),
+      );
+      return;
+    }
 
     final ev = widget.event;
     ev
@@ -60,7 +82,9 @@ class _EventDetailEditorState extends State<EventDetailEditor> {
       ..subtitle = _subtitle
       ..body = _body
       ..startHour = _startHour
-      ..duration = _duration
+      ..startMinute = _startMinute // Save minute to event
+      ..finishHour = _finishHour
+      ..finishMinute = _finishMinute // Save finish minute to event
       ..color = _color;
     
     Navigator.pop(context);
@@ -162,22 +186,60 @@ class _EventDetailEditorState extends State<EventDetailEditor> {
                           ),
                           SizedBox(width: 16),
                           Expanded(
-                            child: DropdownButtonFormField<int>(
-                              value: _startHour,
-                              decoration: InputDecoration(
-                                labelText: 'Start Hour',
-                                border: OutlineInputBorder(),
-                              ),
-                              items: hours
-                                  .map(
-                                    (h) => DropdownMenuItem(
-                                      value: h,
-                                      child: Text('$h:00'),
+                            child: Row( // Wrap hour and minute in a Row
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    initialValue: _startHour.toString(),
+                                    decoration: InputDecoration(
+                                      labelText: 'Start Hour (0-23)',
+                                      border: OutlineInputBorder(),
                                     ),
-                                  )
-                                  .toList(),
-                              onChanged: (v) =>
-                                  setState(() => _startHour = v!),
+                                    keyboardType: TextInputType.number,
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) return 'Required';
+                                      final hour = int.tryParse(v);
+                                      if (hour == null || hour < 0 || hour > 23) {
+                                        return 'Enter 0-23';
+                                      }
+                                      return null;
+                                    },
+                                    onSaved: (v) => _startHour = int.parse(v!),
+                                    onChanged: (v) {
+                                      final hour = int.tryParse(v);
+                                      if (hour != null && hour >= 0 && hour <= 23) {
+                                        setState(() => _startHour = hour);
+                                      }
+                                    },
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: TextFormField(
+                                    initialValue: _startMinute.toString(),
+                                    decoration: InputDecoration(
+                                      labelText: 'Start Minute (0-59)',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) return 'Required';
+                                      final minute = int.tryParse(v);
+                                      if (minute == null || minute < 0 || minute > 59) {
+                                        return 'Enter 0-59';
+                                      }
+                                      return null;
+                                    },
+                                    onSaved: (v) => _startMinute = int.parse(v!),
+                                    onChanged: (v) {
+                                      final minute = int.tryParse(v);
+                                      if (minute != null && minute >= 0 && minute <= 59) {
+                                        setState(() => _startMinute = minute);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
@@ -186,22 +248,60 @@ class _EventDetailEditorState extends State<EventDetailEditor> {
                       Row(
                         children: [
                           Expanded(
-                            child: DropdownButtonFormField<int>(
-                              value: _duration,
-                              decoration: InputDecoration(
-                                labelText: 'Duration (hours)',
-                                border: OutlineInputBorder(),
-                              ),
-                              items: durations
-                                  .map(
-                                    (d) => DropdownMenuItem(
-                                      value: d,
-                                      child: Text('$d hour${d > 1 ? 's' : ''}'),
+                            child: Row( // Wrap finish hour and minute in a Row
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    initialValue: _finishHour.toString(),
+                                    decoration: InputDecoration(
+                                      labelText: 'Finish Hour (0-23)',
+                                      border: OutlineInputBorder(),
                                     ),
-                                  )
-                                  .toList(),
-                              onChanged: (v) =>
-                                  setState(() => _duration = v!),
+                                    keyboardType: TextInputType.number,
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) return 'Required';
+                                      final hour = int.tryParse(v);
+                                      if (hour == null || hour < 0 || hour > 23) {
+                                        return 'Enter 0-23';
+                                      }
+                                      return null;
+                                    },
+                                    onSaved: (v) => _finishHour = int.parse(v!),
+                                    onChanged: (v) {
+                                      final hour = int.tryParse(v);
+                                      if (hour != null && hour >= 0 && hour <= 23) {
+                                        setState(() => _finishHour = hour);
+                                      }
+                                    },
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: TextFormField(
+                                    initialValue: _finishMinute.toString(),
+                                    decoration: InputDecoration(
+                                      labelText: 'Finish Minute (0-59)',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) return 'Required';
+                                      final minute = int.tryParse(v);
+                                      if (minute == null || minute < 0 || minute > 59) {
+                                        return 'Enter 0-59';
+                                      }
+                                      return null;
+                                    },
+                                    onSaved: (v) => _finishMinute = int.parse(v!),
+                                    onChanged: (v) {
+                                      final minute = int.tryParse(v);
+                                      if (minute != null && minute >= 0 && minute <= 59) {
+                                        setState(() => _finishMinute = minute);
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           SizedBox(width: 16),
@@ -216,14 +316,14 @@ class _EventDetailEditorState extends State<EventDetailEditor> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'End Time',
+                                    'Duration',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.grey.shade600,
                                     ),
                                   ),
                                   Text(
-                                    '${_startHour + _duration}:00',
+                                    '${widget.event.durationHours.toStringAsFixed(1)} hours',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,

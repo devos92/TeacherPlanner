@@ -17,7 +17,8 @@ class _AddEventPageState extends State<AddEventPage> {
   // Form fields
   late String _subject, _subtitle;
   late Color _color;
-  late int _startHour, _duration;
+  late int _startHour, _finishHour;
+  late int _startMinute, _finishMinute; // Add minute fields
   
   // Multi-day selection
   Map<String, bool> _selectedDays = {
@@ -29,8 +30,6 @@ class _AddEventPageState extends State<AddEventPage> {
   };
 
   final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-  final hours = List.generate(24, (i) => i);
-  final durations = List.generate(8, (i) => i + 1);
   final palette = [
     Colors.blue,
     Colors.red,
@@ -53,7 +52,9 @@ class _AddEventPageState extends State<AddEventPage> {
       _subtitle = ev.subtitle;
       _color = ev.color;
       _startHour = ev.startHour;
-      _duration = ev.duration;
+      _startMinute = ev.startMinute;
+      _finishHour = ev.finishHour;
+      _finishMinute = ev.finishMinute;
       // For editing, select the current day
       _selectedDays[ev.day] = true;
     } else {
@@ -61,7 +62,9 @@ class _AddEventPageState extends State<AddEventPage> {
       _subtitle = '';
       _color = palette.first;
       _startHour = 9; // Default to 9 AM
-      _duration = 1; // Default to 1 hour
+      _startMinute = 0; // Default to 0 minutes
+      _finishHour = 10; // Default to 10 AM
+      _finishMinute = 0; // Default to 0 minutes
       // Default to Wednesday selected
       _selectedDays['Wed'] = true;
     }
@@ -70,6 +73,26 @@ class _AddEventPageState extends State<AddEventPage> {
   void _save() {
     if (!_formKey.currentState!.validate()) return;
     _formKey.currentState!.save();
+
+    // Validate finish time is after start time
+    final startMinutes = _startHour * 60 + _startMinute;
+    final finishMinutes = _finishHour * 60 + _finishMinute;
+    
+    if (finishMinutes <= startMinutes) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Finish time must be after start time')),
+      );
+      return;
+    }
+
+    // Validate minimum duration of 15 minutes
+    final duration = finishMinutes - startMinutes;
+    if (duration < 15) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Events must be at least 15 minutes long')),
+      );
+      return;
+    }
 
     // Get selected days
     final selectedDays = _selectedDays.entries
@@ -91,7 +114,9 @@ class _AddEventPageState extends State<AddEventPage> {
         ..subtitle = _subtitle
         ..color = _color
         ..startHour = _startHour
-        ..duration = _duration;
+        ..startMinute = _startMinute
+        ..finishHour = _finishHour
+        ..finishMinute = _finishMinute;
       Navigator.pop(context);
     } else {
       // Create multiple events for selected days
@@ -102,7 +127,9 @@ class _AddEventPageState extends State<AddEventPage> {
         body: '',
         color: _color,
         startHour: _startHour,
-        duration: _duration,
+        startMinute: _startMinute,
+        finishHour: _finishHour,
+        finishMinute: _finishMinute,
       )).toList();
       
       Navigator.pop(context, events);
@@ -247,43 +274,116 @@ class _AddEventPageState extends State<AddEventPage> {
                             Row(
                               children: [
                                 Expanded(
-                                  child: DropdownButtonFormField<int>(
-                                    value: _startHour,
+                                  child: TextFormField(
+                                    initialValue: _startHour.toString(),
                                     decoration: InputDecoration(
-                                      labelText: 'Start Time',
+                                      labelText: 'Start Hour (0-23)',
                                       border: OutlineInputBorder(),
+                                      helperText: 'Enter hour (0-23)',
                                     ),
-                                    items: hours
-                                        .map(
-                                          (h) => DropdownMenuItem(
-                                            value: h,
-                                            child: Text('${h.toString().padLeft(2, '0')}:00'),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (v) => setState(() => _startHour = v!),
+                                    keyboardType: TextInputType.number,
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) return 'Required';
+                                      final hour = int.tryParse(v);
+                                      if (hour == null || hour < 0 || hour > 23) {
+                                        return 'Enter 0-23';
+                                      }
+                                      return null;
+                                    },
+                                    onSaved: (v) => _startHour = int.parse(v!),
                                   ),
                                 ),
                                 SizedBox(width: 16),
                                 Expanded(
-                                  child: DropdownButtonFormField<int>(
-                                    value: _duration,
+                                  child: TextFormField(
+                                    initialValue: _startMinute.toString(),
                                     decoration: InputDecoration(
-                                      labelText: 'Duration',
+                                      labelText: 'Start Minute (0-59)',
                                       border: OutlineInputBorder(),
+                                      helperText: 'Enter minute (0-59)',
                                     ),
-                                    items: durations
-                                        .map(
-                                          (d) => DropdownMenuItem(
-                                            value: d,
-                                            child: Text('$d hour${d > 1 ? 's' : ''}'),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (v) => setState(() => _duration = v!),
+                                    keyboardType: TextInputType.number,
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) return 'Required';
+                                      final minute = int.tryParse(v);
+                                      if (minute == null || minute < 0 || minute > 59) {
+                                        return 'Enter 0-59';
+                                      }
+                                      return null;
+                                    },
+                                    onSaved: (v) => _startMinute = int.parse(v!),
                                   ),
                                 ),
                               ],
+                            ),
+                            SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextFormField(
+                                    initialValue: _finishHour.toString(),
+                                    decoration: InputDecoration(
+                                      labelText: 'Finish Hour (0-23)',
+                                      border: OutlineInputBorder(),
+                                      helperText: 'Enter hour (0-23)',
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) return 'Required';
+                                      final hour = int.tryParse(v);
+                                      if (hour == null || hour < 0 || hour > 23) {
+                                        return 'Enter 0-23';
+                                      }
+                                      return null;
+                                    },
+                                    onSaved: (v) => _finishHour = int.parse(v!),
+                                  ),
+                                ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: TextFormField(
+                                    initialValue: _finishMinute.toString(),
+                                    decoration: InputDecoration(
+                                      labelText: 'Finish Minute (0-59)',
+                                      border: OutlineInputBorder(),
+                                      helperText: 'Enter minute (0-59)',
+                                    ),
+                                    keyboardType: TextInputType.number,
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty) return 'Required';
+                                      final minute = int.tryParse(v);
+                                      if (minute == null || minute < 0 || minute > 59) {
+                                        return 'Enter 0-59';
+                                      }
+                                      return null;
+                                    },
+                                    onSaved: (v) => _finishMinute = int.parse(v!),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            
+                            SizedBox(height: 8),
+                            Container(
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade100,
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.grey.shade300),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(Icons.schedule, size: 16, color: Colors.grey.shade600),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Time: ${_startHour.toString().padLeft(2, '0')}:${_startMinute.toString().padLeft(2, '0')} - ${_finishHour.toString().padLeft(2, '0')}:${_finishMinute.toString().padLeft(2, '0')}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             
                             if (selectedDaysCount > 0) ...[
@@ -302,7 +402,7 @@ class _AddEventPageState extends State<AddEventPage> {
                                     Expanded(
                                       child: Text(
                                         'Will create $selectedDaysCount event${selectedDaysCount > 1 ? 's' : ''} for selected day${selectedDaysCount > 1 ? 's' : ''}',
-                                        style: TextStyle(color: _color.shade700),
+                                        style: TextStyle(color: _color.withOpacity(0.8)),
                                       ),
                                     ),
                                   ],
