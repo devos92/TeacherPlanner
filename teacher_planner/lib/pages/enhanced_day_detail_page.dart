@@ -145,7 +145,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                   _selectedOutcomeIds = outcomeIds;
                 });
               },
-              width: 300,
+              width: 400, // Increased from 300 to 400
             ),
 
           // Main Content

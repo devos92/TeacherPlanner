@@ -1,45 +1,36 @@
 import 'package:flutter/material.dart';
-import 'pages/month_view.dart';
-import 'pages/week_view.dart';
-import 'pages/day_view.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:provider/provider.dart';
+import 'config/supabase_config.dart';
+import 'services/curriculum_service.dart';
+import 'pages/home_page.dart';
 
-void main() => runApp(TeacherPlannerApp());
-
-class TeacherPlannerApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Teacher Planner',
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: HomeScreen(),
-    );
-  }
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: SupabaseConfig.supabaseUrl,
+    anonKey: SupabaseConfig.supabaseAnonKey,
+  );
+  
+  runApp(MyApp());
 }
 
-class HomeScreen extends StatefulWidget {
-  @override
-  _HomeScreenState createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  int _currentIndex = 1;
-  final _pages = [MonthView(), WeekView(), DayView()];
-
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: _pages[_currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_view_month),
-            label: 'Month',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.view_week), label: 'Week'),
-          BottomNavigationBarItem(icon: Icon(Icons.view_day), label: 'Day'),
-        ],
-        onTap: (i) => setState(() => _currentIndex = i),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CurriculumService()),
+      ],
+      child: MaterialApp(
+        title: 'Teacher Planner',
+        theme: ThemeData(
+          primarySwatch: Colors.blue,
+          useMaterial3: true,
+        ),
+        home: HomePage(),
       ),
     );
   }

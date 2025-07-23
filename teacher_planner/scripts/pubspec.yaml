@@ -1,0 +1,12 @@
+name: curriculum_uploader
+description: Standalone script to upload Australian Curriculum data to Supabase
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  http: ^1.1.0
+  supabase_flutter: ^2.0.0
+
+dev_dependencies:
+  test: ^1.24.0

@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/curriculum_models.dart';
-import '../services/curriculum_service.dart';
+import '../services/supabase_curriculum_service.dart';
 
 class CurriculumSidebar extends StatefulWidget {
   final List<String> selectedOutcomeIds;
@@ -13,7 +13,7 @@ class CurriculumSidebar extends StatefulWidget {
     Key? key,
     required this.selectedOutcomeIds,
     required this.onOutcomesChanged,
-    this.width = 300,
+    this.width = 400, // Increased default from 300 to 400
   }) : super(key: key);
 
   @override
@@ -24,23 +24,144 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   bool _isExpanded = false;
   String? selectedYearId;
   String? selectedSubjectId;
-  final CurriculumService _curriculumService = CurriculumService();
+  String? selectedStrandId;
   
   // Loading states
   bool _isLoadingYear = false;
   bool _isLoadingSubject = false;
-  CurriculumYear? _currentYearData;
+  bool _isLoadingStrands = false;
+  bool _isLoadingOutcomes = false;
+  
+  // Data
+  List<CurriculumData> _years = [];
+  List<CurriculumData> _subjects = [];
+  List<CurriculumData> _strands = [];
+  List<CurriculumData> _outcomes = [];
 
   @override
   void initState() {
     super.initState();
     selectedYearId = 'foundation';
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    await _loadYears();
+    await _loadSubjects();
+  }
+
+  Future<void> _loadYears() async {
+    setState(() {
+      _isLoadingYear = true;
+    });
+
+    try {
+      final years = await SupabaseCurriculumService.getYears();
+      setState(() {
+        _years = years;
+        _isLoadingYear = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingYear = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load years: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadSubjects() async {
+    setState(() {
+      _isLoadingSubject = true;
+    });
+
+    try {
+      final subjects = await SupabaseCurriculumService.getSubjects();
+      setState(() {
+        _subjects = subjects;
+        _isLoadingSubject = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingSubject = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load subjects: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadStrands() async {
+    if (selectedSubjectId == null) return;
+
+    setState(() {
+      _isLoadingStrands = true;
+    });
+
+    try {
+      final strands = await SupabaseCurriculumService.getStrandsForSubject(selectedSubjectId!);
+      setState(() {
+        _strands = strands;
+        _isLoadingStrands = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingStrands = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load strands: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadOutcomes() async {
+    if (selectedStrandId == null || selectedYearId == null) return;
+
+    setState(() {
+      _isLoadingOutcomes = true;
+    });
+
+    try {
+      final outcomes = await SupabaseCurriculumService.getOutcomesForStrandAndYear(
+        selectedStrandId!, 
+        selectedYearId!
+      );
+      setState(() {
+        _outcomes = outcomes;
+        _isLoadingOutcomes = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingOutcomes = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to load outcomes: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  List<CurriculumData> _getSelectedOutcomes() {
+    return _outcomes.where((outcome) => 
+      widget.selectedOutcomeIds.contains(outcome.id)
+    ).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final curriculumYears = _curriculumService.getCurriculumYears();
 
     return Container(
       width: widget.width,
@@ -98,7 +219,7 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
           // Main Content
           Expanded(
             child: _isExpanded 
-                ? _buildExpandedView(theme, curriculumYears)
+                ? _buildExpandedView(theme)
                 : _buildCollapsedView(theme),
           ),
         ],
@@ -107,7 +228,7 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   }
 
   Widget _buildCollapsedView(ThemeData theme) {
-    final selectedOutcomes = _curriculumService.getSelectedOutcomes(widget.selectedOutcomeIds);
+    final selectedOutcomes = _getSelectedOutcomes();
     
     return SingleChildScrollView(
       padding: EdgeInsets.all(16),
@@ -122,7 +243,6 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                 setState(() {
                   _isExpanded = true;
                 });
-                _loadYearData();
               },
               icon: Icon(Icons.add, size: 20),
               label: Text('Add Curriculum Outcomes'),
@@ -186,7 +306,7 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
     );
   }
 
-  Widget _buildExpandedView(ThemeData theme, List<CurriculumYear> curriculumYears) {
+  Widget _buildExpandedView(ThemeData theme) {
     return Column(
       children: [
         // Minimize Button
@@ -234,7 +354,7 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                   border: OutlineInputBorder(),
                   contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                items: curriculumYears.map((year) {
+                items: _years.map((year) {
                   return DropdownMenuItem(
                     value: year.id,
                     child: Text(
@@ -247,9 +367,10 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                   setState(() {
                     selectedYearId = value;
                     selectedSubjectId = null;
-                    _currentYearData = null;
+                    selectedStrandId = null;
+                    _strands = [];
+                    _outcomes = [];
                   });
-                  _loadYearData();
                 },
               ),
             ],
@@ -259,7 +380,7 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
         SizedBox(height: 16),
 
         // Subject Selection
-        if (_currentYearData != null && _currentYearData!.subjects.isNotEmpty)
+        if (_subjects.isNotEmpty)
           Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Column(
@@ -278,7 +399,7 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                     border: OutlineInputBorder(),
                     contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
-                  items: _currentYearData!.subjects.map((subject) {
+                  items: _subjects.map((subject) {
                     return DropdownMenuItem(
                       value: subject.id,
                       child: Text(
@@ -290,7 +411,11 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                   onChanged: (value) {
                     setState(() {
                       selectedSubjectId = value;
+                      selectedStrandId = null;
+                      _strands = [];
+                      _outcomes = [];
                     });
+                    _loadStrands();
                   },
                 ),
               ],
@@ -299,56 +424,124 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
 
         SizedBox(height: 16),
 
-        // Loading indicator or content
-        if (_isLoadingYear)
+        // Strand Selection
+        if (_strands.isNotEmpty)
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Strand',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: selectedStrandId,
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  items: _strands.map((strand) {
+                    return DropdownMenuItem(
+                      value: strand.id,
+                      child: Text(
+                        strand.name,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedStrandId = value;
+                      _outcomes = [];
+                    });
+                    _loadOutcomes();
+                  },
+                ),
+              ],
+            ),
+          ),
+
+        SizedBox(height: 16),
+
+        // Outcomes List
+        if (_outcomes.isNotEmpty)
           Expanded(
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text(
-                    'Loading curriculum data...',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.textTheme.bodySmall?.color,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Outcomes',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                ],
-              ),
+                ),
+                SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _outcomes.length,
+                    itemBuilder: (context, index) {
+                      final outcome = _outcomes[index];
+                      final isSelected = widget.selectedOutcomeIds.contains(outcome.id);
+                      
+                      return Card(
+                        margin: EdgeInsets.only(bottom: 8),
+                        child: CheckboxListTile(
+                          title: Text(
+                            outcome.code ?? 'No Code',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          subtitle: Text(
+                            outcome.description ?? 'No description',
+                            style: TextStyle(fontSize: 11),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          value: isSelected,
+                          onChanged: (bool? value) {
+                            final newSelection = List<String>.from(widget.selectedOutcomeIds);
+                            if (value == true) {
+                              newSelection.add(outcome.id);
+                            } else {
+                              newSelection.remove(outcome.id);
+                            }
+                            widget.onOutcomesChanged(newSelection);
+                          },
+                          controlAffinity: ListTileControlAffinity.leading,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           )
-        else if (_currentYearData != null && selectedSubjectId != null)
-          Expanded(
-            child: _buildStrandsAndOutcomes(_currentYearData!),
-          )
-        else if (_currentYearData != null)
+        else if (_isLoadingOutcomes)
           Expanded(
             child: Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'Select a subject to view outcomes',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodySmall?.color,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+              child: CircularProgressIndicator(),
             ),
           )
-        else
+        else if (selectedStrandId != null)
           Expanded(
             child: Center(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'Select a year level to load curriculum data',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodySmall?.color,
-                  ),
-                  textAlign: TextAlign.center,
+              child: Text(
+                'No outcomes found for this strand and year level',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.grey.shade600,
                 ),
+                textAlign: TextAlign.center,
               ),
             ),
           ),
@@ -356,156 +549,48 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
     );
   }
 
-  Widget _buildStrandsAndOutcomes(CurriculumYear year) {
-    final theme = Theme.of(context);
-    final selectedSubject = year.subjects.firstWhere(
-      (subject) => subject.id == selectedSubjectId,
-    );
-
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            selectedSubject.name,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-            overflow: TextOverflow.ellipsis,
-          ),
-          SizedBox(height: 16),
-          ...selectedSubject.strands.map((strand) {
-            return Card(
-              margin: EdgeInsets.only(bottom: 12),
-              child: ExpansionTile(
-                title: Text(
-                  strand.name,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                subtitle: Text(
-                  strand.description,
-                  style: theme.textTheme.bodySmall,
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
-                ),
-                children: strand.outcomes.map((outcome) {
-                  final isSelected = widget.selectedOutcomeIds.contains(outcome.id);
-                  return ListTile(
-                    dense: true,
-                    leading: Checkbox(
-                      value: isSelected,
-                      onChanged: (value) {
-                        final newSelectedIds = List<String>.from(widget.selectedOutcomeIds);
-                        if (value == true) {
-                          newSelectedIds.add(outcome.id);
-                        } else {
-                          newSelectedIds.remove(outcome.id);
-                        }
-                        widget.onOutcomesChanged(newSelectedIds);
-                      },
-                    ),
-                    title: Text(
-                      outcome.code,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(
-                      outcome.description,
-                      style: theme.textTheme.bodySmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    onTap: () {
-                      final newSelectedIds = List<String>.from(widget.selectedOutcomeIds);
-                      if (isSelected) {
-                        newSelectedIds.remove(outcome.id);
-                      } else {
-                        newSelectedIds.add(outcome.id);
-                      }
-                      widget.onOutcomesChanged(newSelectedIds);
-                    },
-                  );
-                }).toList(),
-              ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOutcomeCard(CurriculumOutcome outcome, ThemeData theme) {
+  Widget _buildOutcomeCard(CurriculumData outcome, ThemeData theme) {
     return Card(
       margin: EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        dense: true,
-        leading: Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: theme.primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Icon(
-            Icons.school,
-            size: 16,
-            color: theme.primaryColor,
-          ),
-        ),
-        title: Text(
-          outcome.code,
-          style: theme.textTheme.bodySmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Text(
-          outcome.description,
-          style: theme.textTheme.bodySmall,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: IconButton(
-          icon: Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
-          onPressed: () {
-            final newSelectedIds = List<String>.from(widget.selectedOutcomeIds);
-            newSelectedIds.remove(outcome.id);
-            widget.onOutcomesChanged(newSelectedIds);
-          },
+      child: Padding(
+        padding: EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    outcome.code ?? 'No Code',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.primaryColor,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    final newSelection = List<String>.from(widget.selectedOutcomeIds);
+                    newSelection.remove(outcome.id);
+                    widget.onOutcomesChanged(newSelection);
+                  },
+                  icon: Icon(Icons.remove_circle_outline, size: 20),
+                  color: Colors.red,
+                  padding: EdgeInsets.zero,
+                  constraints: BoxConstraints(),
+                ),
+              ],
+            ),
+            SizedBox(height: 4),
+            Text(
+              outcome.description ?? 'No description',
+              style: theme.textTheme.bodySmall,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ),
       ),
     );
-  }
-
-  Future<void> _loadYearData() async {
-    if (selectedYearId == null) return;
-
-    setState(() {
-      _isLoadingYear = true;
-    });
-
-    try {
-      final yearData = await _curriculumService.getCurriculumYear(selectedYearId!);
-      setState(() {
-        _currentYearData = yearData;
-        _isLoadingYear = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoadingYear = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to load curriculum data: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 } 
