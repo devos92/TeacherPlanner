@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/curriculum_models.dart';
 
 class CurriculumApiService {
+  // Updated to use the correct Australian Curriculum API endpoints
   static const String _baseUrl = 'https://www.australiancurriculum.edu.au/api/v1';
   
   // Cache for API responses
@@ -24,23 +25,32 @@ class CurriculumApiService {
     }
 
     try {
+      // Try the correct endpoint for learning areas
       final response = await http.get(
         Uri.parse('$_baseUrl/learning-areas'),
-        headers: {'Accept': 'application/json'},
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'TeacherPlanner/1.0',
+        },
       );
+
+      print('API Response Status: ${response.statusCode}');
+      print('API Response Body: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final subjects = <CurriculumSubject>[];
         
-        for (var item in data['data']) {
-          subjects.add(CurriculumSubject(
-            id: item['identifier'],
-            name: item['title'],
-            code: item['identifier'],
-            description: item['description'] ?? '',
-            strands: [], // Will be populated separately
-          ));
+        if (data['data'] != null) {
+          for (var item in data['data']) {
+            subjects.add(CurriculumSubject(
+              id: item['identifier'] ?? item['id'] ?? '',
+              name: item['title'] ?? item['name'] ?? '',
+              code: item['identifier'] ?? item['id'] ?? '',
+              description: item['description'] ?? '',
+              strands: [], // Will be populated separately
+            ));
+          }
         }
 
         // Cache the result
@@ -51,6 +61,7 @@ class CurriculumApiService {
 
         return subjects;
       } else {
+        print('API Error: ${response.statusCode} - ${response.body}');
         throw Exception('Failed to load learning areas: ${response.statusCode}');
       }
     } catch (e) {
@@ -73,22 +84,30 @@ class CurriculumApiService {
     }
 
     try {
+      // Try the correct endpoint for strands
       final response = await http.get(
         Uri.parse('$_baseUrl/learning-areas/$learningAreaId/strands'),
-        headers: {'Accept': 'application/json'},
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'TeacherPlanner/1.0',
+        },
       );
+
+      print('Strands API Response Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final strands = <CurriculumStrand>[];
         
-        for (var item in data['data']) {
-          strands.add(CurriculumStrand(
-            id: item['identifier'],
-            name: item['title'],
-            description: item['description'] ?? '',
-            outcomes: [], // Will be populated separately
-          ));
+        if (data['data'] != null) {
+          for (var item in data['data']) {
+            strands.add(CurriculumStrand(
+              id: item['identifier'] ?? item['id'] ?? '',
+              name: item['title'] ?? item['name'] ?? '',
+              description: item['description'] ?? '',
+              outcomes: [], // Will be populated separately
+            ));
+          }
         }
 
         // Cache the result
@@ -99,6 +118,7 @@ class CurriculumApiService {
 
         return strands;
       } else {
+        print('Strands API Error: ${response.statusCode} - ${response.body}');
         throw Exception('Failed to load strands: ${response.statusCode}');
       }
     } catch (e) {
@@ -120,23 +140,31 @@ class CurriculumApiService {
     }
 
     try {
+      // Try the correct endpoint for content descriptions (outcomes)
       final response = await http.get(
         Uri.parse('$_baseUrl/learning-areas/$learningAreaId/strands/$strandId/content-descriptions'),
-        headers: {'Accept': 'application/json'},
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'TeacherPlanner/1.0',
+        },
       );
+
+      print('Outcomes API Response Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final outcomes = <CurriculumOutcome>[];
         
-        for (var item in data['data']) {
-          outcomes.add(CurriculumOutcome(
-            id: item['identifier'],
-            code: item['notation'] ?? '',
-            description: item['description'] ?? '',
-            elaboration: item['elaborations']?.first?['description'] ?? '',
-            yearLevel: _extractYearLevel(item['year-level-descriptions'] ?? []),
-          ));
+        if (data['data'] != null) {
+          for (var item in data['data']) {
+            outcomes.add(CurriculumOutcome(
+              id: item['identifier'] ?? item['id'] ?? '',
+              code: item['notation'] ?? item['code'] ?? '',
+              description: item['description'] ?? '',
+              elaboration: item['elaborations']?.first?['description'] ?? '',
+              yearLevel: _extractYearLevel(item['year-level-descriptions'] ?? []),
+            ));
+          }
         }
 
         // Cache the result
@@ -147,6 +175,7 @@ class CurriculumApiService {
 
         return outcomes;
       } else {
+        print('Outcomes API Error: ${response.statusCode} - ${response.body}');
         throw Exception('Failed to load outcomes: ${response.statusCode}');
       }
     } catch (e) {
@@ -168,19 +197,30 @@ class CurriculumApiService {
     }
 
     try {
+      print('Fetching curriculum data for year level: $yearLevel');
+      
       // Fetch learning areas
       final subjects = await fetchLearningAreas();
+      print('Found ${subjects.length} learning areas');
+      
       final updatedSubjects = <CurriculumSubject>[];
       
       // For each subject, fetch strands and outcomes
       for (var subject in subjects) {
+        print('Fetching strands for subject: ${subject.name}');
         final strands = await fetchStrands(subject.id);
+        print('Found ${strands.length} strands for ${subject.name}');
+        
         final updatedStrands = <CurriculumStrand>[];
         
         for (var strand in strands) {
+          print('Fetching outcomes for strand: ${strand.name}');
           final outcomes = await fetchOutcomes(subject.id, strand.id);
+          print('Found ${outcomes.length} outcomes for ${strand.name}');
+          
           // Filter outcomes for the specific year level
           final yearOutcomes = outcomes.where((o) => o.yearLevel == yearLevel).toList();
+          print('Filtered to ${yearOutcomes.length} outcomes for year level $yearLevel');
           
           updatedStrands.add(CurriculumStrand(
             id: strand.id,
@@ -212,6 +252,7 @@ class CurriculumApiService {
         'timestamp': DateTime.now(),
       };
 
+      print('Successfully fetched curriculum data for $yearLevel');
       return yearData;
     } catch (e) {
       print('Error fetching year level data: $e');
