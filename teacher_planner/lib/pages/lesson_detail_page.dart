@@ -3,34 +3,111 @@ import 'week_view.dart';
 
 class LessonDetailPage extends StatelessWidget {
   final EventBlock event;
-  LessonDetailPage({required this.event});
+
+  const LessonDetailPage({Key? key, required this.event}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Scaffold(
-      appBar: AppBar(title: Text(event.subject)),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      appBar: AppBar(
+        title: Text(event.subject),
+        backgroundColor: event.color,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Day: ${event.day}'),
-            Text('Start: ${event.startHour}:00'),
-            Text('Duration: ${event.duration} hour(s)'),
-            SizedBox(height: 16),
-            Text(
-              'Lesson Plan Details',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Expanded(
-              child: TextField(
-                maxLines: null,
-                decoration: InputDecoration(
-                  hintText: 'Enter detailed lesson plan here...',
-                  border: OutlineInputBorder(),
+            // Event header
+            Card(
+              elevation: 2,
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.subject,
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (event.subtitle.isNotEmpty) ...[
+                      SizedBox(height: 8),
+                      Text(
+                        event.subtitle,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                    SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule, color: event.color),
+                        SizedBox(width: 8),
+                        Text(
+                          '${event.startHour}:00 - ${event.startHour + event.duration}:00',
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                        SizedBox(width: 16),
+                        Icon(Icons.timer, color: event.color),
+                        SizedBox(width: 8),
+                        Text(
+                          '${event.duration} hour${event.duration > 1 ? 's' : ''}',
+                          style: theme.textTheme.bodyLarge,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
+            
+            SizedBox(height: 24),
+            
+            // Lesson content
+            Text(
+              'Lesson Plan',
+              style: theme.textTheme.titleLarge,
+            ),
+            SizedBox(height: 12),
+            
+            if (event.body.isNotEmpty)
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.grey.shade50,
+                ),
+                child: SelectableText(
+                  event.body,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 16,
+                    height: 1.5,
+                  ),
+                ),
+              )
+            else
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'No lesson plan details available.',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey.shade600,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
           ],
         ),
       ),
