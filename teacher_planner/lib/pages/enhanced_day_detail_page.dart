@@ -27,30 +27,39 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   static const int startHour = 6, endHour = 18;
   static const double hourHeight = 80.0, padding = 12.0;
 
-  List<EnhancedEventBlock> _enhancedEvents = [];
-  List<String> _selectedOutcomeIds = [];
+  // events and selections
+  late List<EnhancedEventBlock> _enhancedEvents;
+  List<String> _selectedOutcomeCodes = [];
+  List<CurriculumOutcome> _selectedOutcomes = [];
   bool _showCurriculumSidebar = true;
+
   final StorageService _storageService =
       StorageServiceFactory.create(StorageProvider.supabase);
 
   @override
   void initState() {
     super.initState();
-    _enhancedEvents = widget.events.map((e) => EnhancedEventBlock(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      day: e.day,
-      subject: e.subject,
-      subtitle: e.subtitle,
-      body: e.body,
-      color: e.color,
-      startHour: e.startHour,
-      startMinute: e.startMinute,
-      finishHour: e.finishHour,
-      finishMinute: e.finishMinute,
-      widthFactor: e.widthFactor,
-      createdAt: DateTime.now(),
-      updatedAt: DateTime.now(),
-    )).toList();
+    // Initialize enhanced events from raw EventBlock data
+    _enhancedEvents = widget.events.map((e) {
+      return EnhancedEventBlock(
+        id: UniqueKey().toString(),
+        day: e.day,
+        subject: e.subject,
+        subtitle: e.subtitle,
+        body: e.body,
+        color: e.color,
+        startHour: e.startHour,
+        startMinute: e.startMinute,
+        finishHour: e.finishHour,
+        finishMinute: e.finishMinute,
+        widthFactor: e.widthFactor,
+        attachmentIds: [],
+        curriculumOutcomeIds: [],
+        hyperlinks: [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
+    }).toList();
   }
 
   @override
@@ -62,11 +71,11 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     final styleSubtitle = theme.textTheme.bodyMedium!;
     final styleBody = theme.textTheme.bodySmall!;
 
+    // compute timeline height
     double timelineH = totalSlots * hourHeight;
     for (var ev in _enhancedEvents) {
-      final h = _calculateEventHeight(ev, contentW, styleTitle, styleSubtitle, styleBody);
-      final bottom = (ev.startHour - startHour) * hourHeight + h;
-      if (bottom > timelineH) timelineH = bottom;
+      timelineH = _max(timelineH, (ev.startHour - startHour) * hourHeight +
+          _calculateEventHeight(ev, contentW, styleTitle, styleSubtitle, styleBody));
     }
 
     return Scaffold(
@@ -84,9 +93,22 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
         children: [
           if (_showCurriculumSidebar)
             CurriculumSidebar(
-              selectedOutcomeCodes: _selectedOutcomeCodes,
-              onSelectionChanged: (codes) => setState(() => _selectedOutcomeCodes = codes),
               width: 300,
+              onSelectionChanged: (outcomes) {
+                // Convert CurriculumData to CurriculumOutcome and add to selected outcomes
+                final newOutcomes = outcomes.map((outcome) => CurriculumOutcome(
+                  id: outcome.id,
+                  code: outcome.code ?? '',
+                  description: outcome.description ?? '',
+                  elaboration: outcome.elaboration ?? '',
+                )).toList();
+                
+                // Add to existing selected outcomes
+                setState(() {
+                  _selectedOutcomes.addAll(newOutcomes);
+                  _selectedOutcomeCodes.addAll(newOutcomes.map((o) => o.code));
+                });
+              },
             ),
           Expanded(
             child: SingleChildScrollView(
@@ -97,28 +119,28 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                     height: timelineH,
                     child: Row(
                       children: [
-                        // Hours column
-                        Container(
-                          width: 60,
-                          child: Column(
-                            children: [
-                              for (int i = startHour; i <= endHour; i++)
-                                Container(
-                                  height: hourHeight,
-                                  alignment: Alignment.topCenter,
+                        // Hour labels
+                        Column(
+                          children: [
+                            for (int i = startHour; i <= endHour; i++)
+                              Container(
+                                height: hourHeight,
+                                alignment: Alignment.topCenter,
+                                child: Padding(
+                                  padding: EdgeInsets.only(top: 8),
                                   child: Text(
                                     '${i.toString().padLeft(2,'0')}:00',
                                     style: theme.textTheme.bodySmall,
                                   ),
                                 ),
-                            ],
-                          ),
+                              ),
+                          ],
                         ),
-                        // Events stack
+                        // Events
                         Expanded(
                           child: Stack(
                             children: [
-                              // grid lines
+                              // Grid lines
                               for (int i = 0; i <= totalSlots; i++)
                                 Positioned(
                                   top: i * hourHeight,
@@ -126,7 +148,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                                   right: 0,
                                   child: Divider(color: Colors.grey.shade300),
                                 ),
-                              // event cards
+                              // Event cards
                               for (var ev in _enhancedEvents)
                                 Positioned(
                                   top: (ev.startHour - startHour) * hourHeight,
@@ -145,66 +167,32 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                       ],
                     ),
                   ),
-                  // (Reflection and attachments go here…)
+                  // (Reflection and attachments would go here)
                 ],
               ),
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildEnhancedEventCard(EnhancedEventBlock ev, ThemeData theme) {
-    // Your card UI, e.g.:
-    return Card(
-      color: ev.color,
-      child: Padding(
-        padding: EdgeInsets.all(padding),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(ev.subject, style: theme.textTheme.titleMedium?.copyWith(color: Colors.white)),
-            if (ev.subtitle.isNotEmpty)
-              Text(ev.subtitle, style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white)),
-          ],
-        ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {},
+        child: Icon(Icons.add),
       ),
     );
   }
 
-  Future<void> _editEvent(EnhancedEventBlock ev) async {
-  final outcomes = await CurriculumService.getOutcomesByIds(_selectedOutcomeCodes);
-  final modelList = outcomes.map((d) => CurriculumOutcome(
-    id: d.id, code: d.code!, description: d.description!, elaboration: d.elaboration,
-  )).toList();
-
-  await showModalBottomSheet(
-    context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
-    builder: (_) => EnhancedEventEditor(
-      event: ev,
-      availableOutcomes: modelList,
-      onEventUpdated: (u) {
-        setState(() {
-          final i = _enhancedEvents.indexWhere((e) => e.id == u.id);
-          if (i != -1) _enhancedEvents[i] = u;
-        });
-      },
-    ),
-  );
-}
+  double _max(double a, double b) => a > b ? a : b;
 
   double _calculateEventHeight(
     EnhancedEventBlock ev,
-    double contentW,
+    double width,
     TextStyle st, TextStyle ss, TextStyle sb,
   ) {
-    // identical to before…
     double h = padding * 2;
-    h += _measureTextHeight(ev.subject, contentW, st);
-    h += _measureTextHeight(ev.subtitle, contentW, ss);
+    h += _measureTextHeight(ev.subject, width, st);
+   h += _measureTextHeight(ev.subtitle, width, ss);
     for (var line in ev.body.split('\n')) {
-      h += _measureTextHeight(line, contentW, sb);
+      h += _measureTextHeight(line, width, sb);
     }
     return h + 20;
   }
@@ -213,8 +201,111 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     final tp = TextPainter(
       text: TextSpan(text: text, style: style),
       textDirection: TextDirection.ltr,
-      maxLines: null,
     )..layout(maxWidth: maxWidth);
     return tp.height;
+  }
+
+  Widget _buildEnhancedEventCard(EnhancedEventBlock ev, ThemeData theme) {
+    return Container(
+      padding: EdgeInsets.all(padding),
+      decoration: BoxDecoration(
+        color: ev.color,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Time display
+          Row(
+            children: [
+              Icon(Icons.schedule, size: 12, color: Colors.white70),
+              SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  '${ev.startHour.toString().padLeft(2, '0')}:${ev.startMinute.toString().padLeft(2, '0')} - ${ev.finishHour.toString().padLeft(2, '0')}:${ev.finishMinute.toString().padLeft(2, '0')}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white70,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 4),
+          
+          // Title
+          Text(
+            ev.subject,
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          
+          // Subtitle
+          if (ev.subtitle.isNotEmpty) ...[
+            SizedBox(height: 2),
+            Text(
+              ev.subtitle,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.white,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          
+          // Body
+          if (ev.body.isNotEmpty) ...[
+            SizedBox(height: 4),
+            Text(
+              ev.body,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.white,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _editEvent(EnhancedEventBlock event) async {
+    final data = await CurriculumService.getOutcomesByIds(_selectedOutcomeCodes);
+    // 2) convert to your model
+    final availableOutcomes = data.map((d) => CurriculumOutcome(
+      id: d.id,
+      code: d.code ?? '',
+      description: d.description ?? '',
+      elaboration: d.elaboration ?? '',
+    )).toList();
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => EnhancedEventEditor(
+        event: event,
+        availableOutcomes: availableOutcomes,
+        onEventUpdated: (u) {
+          setState(() {
+            final idx = _enhancedEvents.indexWhere((e) => e.id == u.id);
+            if (idx != -1) _enhancedEvents[idx] = u;
+          });
+        },
+      ),
+    );
   }
 }
