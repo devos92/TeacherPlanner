@@ -1,19 +1,21 @@
 // lib/widgets/curriculum_sidebar.dart
 
 import 'package:flutter/material.dart';
-import '../services/curriculum_service.dart';
 import '../models/curriculum_models.dart';
+import '../services/curriculum_service.dart';
 
+/// A sidebar that lets users drill down through Year → Subject → Strand → Sub-strand,
+/// then pick content or elaboration text to add as outcomes.
 class CurriculumSidebar extends StatefulWidget {
-  final List<String> selectedOutcomeIds;
-  final ValueChanged<List<String>> onOutcomesChanged;
+  final List<String> selectedOutcomeCodes;
+  final ValueChanged<List<String>> onSelectionChanged;
   final double width;
 
   const CurriculumSidebar({
     Key? key,
-    required this.selectedOutcomeIds,
-    required this.onOutcomesChanged,
-    this.width = 400,
+    required this.selectedOutcomeCodes,
+    required this.onSelectionChanged,
+    this.width = 300,
   }) : super(key: key);
 
   @override
@@ -21,19 +23,16 @@ class CurriculumSidebar extends StatefulWidget {
 }
 
 class _CurriculumSidebarState extends State<CurriculumSidebar> {
-  Map<String, dynamic> _tree = {};
-  List<String> _years = [];
-  List<String> _subjects = [];
-  List<String> _strands = [];
-  List<String> _subStrands = [];
-  List<dynamic> _outcomes = [];
-
-  String? _selectedYear;
-  String? _selectedSubject;
-  String? _selectedStrand;
-  String? _selectedSubStrand;
-
+  bool _expanded = false;
   bool _loading = true;
+  Map<String, dynamic> _tree = {};
+
+  String? _year;
+  String? _subject;
+  String? _strand;
+  String? _subStrand;
+  List<Map<String, dynamic>> _outcomes = [];
+
   bool _showElaboration = false;
 
   @override
@@ -43,179 +42,224 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   }
 
   Future<void> _loadTree() async {
+    setState(() => _loading = true);
     final tree = await CurriculumService.getCurriculumTree();
     setState(() {
       _tree = tree;
-      _years = tree.keys.toList()..sort();
-      _selectedYear = _years.isNotEmpty ? _years.first : null;
+      if (_tree.isNotEmpty) {
+        _year = _tree.keys.first;
+        _subject = (_tree[_year] as Map<String, dynamic>).keys.first;
+        _strand = (_tree[_year]![_subject] as Map<String, dynamic>).keys.first;
+        _subStrand = (_tree[_year]![_subject]![_strand] as Map<String, dynamic>).keys.first;
+        _outcomes = List<Map<String, dynamic>>.from(
+          _tree[_year]![_subject]![_strand]![_subStrand],
+        );
+      }
       _loading = false;
     });
-    _updateSubjectList();
   }
 
-  void _updateSubjectList() {
-    if (_selectedYear == null) return;
-    final subjMap = Map<String, dynamic>.from(_tree[_selectedYear]!);
-    setState(() {
-      _subjects = subjMap.keys.toList()..sort();
-      _selectedSubject = _subjects.isNotEmpty ? _subjects.first : null;
-    });
-    _updateStrandList();
-  }
-
-  void _updateStrandList() {
-    if (_selectedYear == null || _selectedSubject == null) return;
-    final subjMap = Map<String, dynamic>.from(_tree[_selectedYear]![_selectedSubject]!);
-    setState(() {
-      _strands = subjMap.keys.toList()..sort();
-      _selectedStrand = _strands.isNotEmpty ? _strands.first : null;
-    });
-    _updateSubStrandList();
-  }
-
-  void _updateSubStrandList() {
-    if (_selectedYear == null || _selectedSubject == null || _selectedStrand == null) return;
-    final strandMap = Map<String, dynamic>.from(
-      _tree[_selectedYear]![_selectedSubject]![_selectedStrand]!);
-    setState(() {
-      _subStrands = strandMap.keys.toList()..sort();
-      _selectedSubStrand = _subStrands.isNotEmpty ? _subStrands.first : null;
-    });
-    _updateOutcomeList();
-  }
-
-  void _updateOutcomeList() {
-    if (_selectedYear == null || _selectedSubject == null || _selectedStrand == null) return;
-    final list = _tree[_selectedYear]![_selectedSubject]![_selectedStrand]!;
-    if (_selectedSubStrand != null && list is Map<String, dynamic>) {
-      _outcomes = list[_selectedSubStrand!] as List<dynamic>;
-    } else if (list is List<dynamic>) {
-      _outcomes = list;
-    } else {
-      _outcomes = [];
+  void _updateOutcomes() {
+    if (_year != null && _subject != null && _strand != null && _subStrand != null) {
+      setState(() {
+        _outcomes = List<Map<String, dynamic>>.from(
+          _tree[_year]![_subject]![_strand]![_subStrand],
+        );
+      });
     }
-    setState(() {});
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final sidebarW = widget.width;
+
     return Container(
-      width: widget.width,
-      color: theme.cardColor,
-      child: _loading
-          ? Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Curriculum', style: theme.textTheme.titleMedium),
-                  SizedBox(height: 12),
-                  _buildDropdown(
-                    label: 'Year',
-                    items: _years,
-                    value: _selectedYear,
-                    onChanged: (v) => setState(() {
-                      _selectedYear = v;
-                      _updateSubjectList();
-                    }),
-                  ),
-                  if (_subjects.isNotEmpty) ...[
-                    SizedBox(height: 12),
-                    _buildDropdown(
-                      label: 'Subject',
-                      items: _subjects,
-                      value: _selectedSubject,
-                      onChanged: (v) => setState(() {
-                        _selectedSubject = v;
-                        _updateStrandList();
-                      }),
-                    ),
-                  ],
-                  if (_strands.isNotEmpty) ...[
-                    SizedBox(height: 12),
-                    _buildDropdown(
-                      label: 'Strand',
-                      items: _strands,
-                      value: _selectedStrand,
-                      onChanged: (v) => setState(() {
-                        _selectedStrand = v;
-                        _updateSubStrandList();
-                      }),
-                    ),
-                  ],
-                  if (_subStrands.isNotEmpty) ...[
-                    SizedBox(height: 12),
-                    _buildDropdown(
-                      label: 'Sub-strand',
-                      items: _subStrands,
-                      value: _selectedSubStrand,
-                      onChanged: (v) => setState(() {
-                        _selectedSubStrand = v;
-                        _updateOutcomeList();
-                      }),
-                    ),
-                  ],
-                  SizedBox(height: 12),
-                  Row(
-                    children: [
-                      ChoiceChip(
-                        label: Text('Description'),
-                        selected: !_showElaboration,
-                        onSelected: (_) => setState(() => _showElaboration = false),
-                      ),
-                      SizedBox(width: 8),
-                      ChoiceChip(
-                        label: Text('Elaboration'),
-                        selected: _showElaboration,
-                        onSelected: (_) => setState(() => _showElaboration = true),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 12),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: _outcomes.length,
-                      itemBuilder: (_, i) {
-                        final data = _outcomes[i] as Map<String, dynamic>;
-                        final id = data['code'] as String;
-                        final desc = data[_showElaboration ? 'elaboration' : 'content_description'] as String? ?? '';
-                        final selected = widget.selectedOutcomeIds.contains(id);
-                        return CheckboxListTile(
-                          title: Text(id),
-                          subtitle: Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis),
-                          value: selected,
-                          onChanged: (v) {
-                            final list = List<String>.from(widget.selectedOutcomeIds);
-                            if (v == true) list.add(id); else list.remove(id);
-                            widget.onOutcomesChanged(list);
-                          },
-                        );
-                      },
+      width: sidebarW,
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        border: Border(right: BorderSide(color: theme.dividerColor)),
+      ),
+      child: Column(
+        children: [
+          // Header with expand/collapse button
+          Container(
+            color: theme.primaryColor.withOpacity(0.1),
+            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            child: Row(
+              children: [
+                Icon(Icons.school, color: theme.primaryColor),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Curriculum Outcomes',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.primaryColor,
                     ),
                   ),
-                ],
-              ),
+                ),
+                IconButton(
+                  icon: Icon(_expanded ? Icons.close : Icons.filter_list),
+                  onPressed: () => setState(() => _expanded = !_expanded),
+                ),
+              ],
             ),
+          ),
+          Expanded(
+            child: _loading
+                ? Center(child: CircularProgressIndicator())
+                : _expanded
+                    ? _buildFilterView(theme)
+                    : _buildSummaryView(theme),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildDropdown({
-    required String label,
-    required List<String> items,
-    required String? value,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return DropdownButtonFormField<String>(
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(),
+  Widget _buildFilterView(ThemeData theme) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Year dropdown
+          Text('Year', style: theme.textTheme.bodyLarge),
+          DropdownButton<String>(
+            isExpanded: true,
+            value: _year,
+            items: _tree.keys.map((y) => DropdownMenuItem(
+              value: y,
+              child: Text(y),
+            )).toList(),
+            onChanged: (v) {
+              _year = v;
+              // reset deeper levels
+              _subject = (_tree[_year] as Map<String, dynamic>).keys.first;
+              _strand = (_tree[_year]![_subject] as Map<String, dynamic>).keys.first;
+              _subStrand = (_tree[_year]![_subject]![_strand] as Map<String, dynamic>).keys.first;
+              _updateOutcomes();
+              setState(() {});
+            },
+          ),
+          SizedBox(height: 12),
+
+          // Subject dropdown
+          Text('Subject', style: theme.textTheme.bodyLarge),
+          DropdownButton<String>(
+            isExpanded: true,
+            value: _subject,
+            items: (_tree[_year] as Map<String, dynamic>).keys.map((s) => DropdownMenuItem(
+              value: s,
+              child: Text(s),
+            )).toList(),
+            onChanged: (v) {
+              _subject = v;
+              _strand = (_tree[_year]![_subject] as Map<String, dynamic>).keys.first;
+              _subStrand = (_tree[_year]![_subject]![_strand] as Map<String, dynamic>).keys.first;
+              _updateOutcomes();
+              setState(() {});
+            },
+          ),
+          SizedBox(height: 12),
+
+          // Strand dropdown
+          Text('Strand', style: theme.textTheme.bodyLarge),
+          DropdownButton<String>(
+            isExpanded: true,
+            value: _strand,
+            items: (_tree[_year]![_subject] as Map<String, dynamic>).keys.map((st) => DropdownMenuItem(
+              value: st,
+              child: Text(st),
+            )).toList(),
+            onChanged: (v) {
+              _strand = v;
+              _subStrand = (_tree[_year]![_subject]![_strand] as Map<String, dynamic>).keys.first;
+              _updateOutcomes();
+              setState(() {});
+            },
+          ),
+          SizedBox(height: 12),
+
+          // Sub-Strand dropdown
+          Text('Sub-Strand', style: theme.textTheme.bodyLarge),
+          DropdownButton<String>(
+            isExpanded: true,
+            value: _subStrand,
+            items: (_tree[_year]![_subject]![_strand] as Map<String, dynamic>).keys.map((ss) => DropdownMenuItem(
+              value: ss,
+              child: Text(ss.isEmpty ? '[none]' : ss),
+            )).toList(),
+            onChanged: (v) {
+              _subStrand = v;
+              _updateOutcomes();
+              setState(() {});
+            },
+          ),
+
+          Divider(height: 32),
+
+          // Toggle Description vs Elaboration
+          Row(
+            children: [
+              ChoiceChip(
+                label: Text('Description'),
+                selected: !_showElaboration,
+                onSelected: (_) => setState(() => _showElaboration = false),
+              ),
+              SizedBox(width: 8),
+              ChoiceChip(
+                label: Text('Elaboration'),
+                selected: _showElaboration,
+                onSelected: (_) => setState(() => _showElaboration = true),
+              ),
+            ],
+          ),
+
+          Divider(height: 32),
+
+          // Outcomes checkbox list
+          ..._outcomes.map((o) {
+            final code = o['code'] as String;
+            final text = _showElaboration
+                ? (o['elaboration'] as String? ?? '')
+                : (o['content_description'] as String? ?? '');
+            final selected = widget.selectedOutcomeCodes.contains(code);
+            return CheckboxListTile(
+              title: Text(code, style: theme.textTheme.bodySmall),
+              subtitle: Text(text, maxLines: 2, overflow: TextOverflow.ellipsis),
+              value: selected,
+              onChanged: (v) {
+                final list = List<String>.from(widget.selectedOutcomeCodes);
+                if (v == true) list.add(code);
+                else list.remove(code);
+                widget.onSelectionChanged(list);
+              },
+            );
+          }).toList(),
+        ],
       ),
-      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-      value: value,
-      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildSummaryView(ThemeData theme) {
+    // show selected outcome codes
+    if (widget.selectedOutcomeCodes.isEmpty) {
+      return Center(child: Text('No outcomes selected'));
+    }
+    return ListView(
+      padding: EdgeInsets.all(16),
+      children: widget.selectedOutcomeCodes.map((c) => ListTile(
+        title: Text(c),
+        trailing: IconButton(
+          icon: Icon(Icons.remove_circle_outline, color: Colors.red),
+          onPressed: () {
+            final list = List<String>.from(widget.selectedOutcomeCodes)..remove(c);
+            widget.onSelectionChanged(list);
+          },
+        ),
+      )).toList(),
     );
   }
 }

@@ -84,9 +84,9 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
         children: [
           if (_showCurriculumSidebar)
             CurriculumSidebar(
-              selectedOutcomeIds: _selectedOutcomeIds,
-              onOutcomesChanged: (ids) => setState(() => _selectedOutcomeIds = ids),
-              width: 400,
+              selectedOutcomeCodes: _selectedOutcomeCodes,
+              onSelectionChanged: (codes) => setState(() => _selectedOutcomeCodes = codes),
+              width: 300,
             ),
           Expanded(
             child: SingleChildScrollView(
@@ -173,35 +173,26 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     );
   }
 
-  Future<void> _editEvent(EnhancedEventBlock event) async {
-    // 1) load the raw data
-    final data = await CurriculumService.getOutcomesByIds(_selectedOutcomeIds);
+  Future<void> _editEvent(EnhancedEventBlock ev) async {
+  final outcomes = await CurriculumService.getOutcomesByIds(_selectedOutcomeCodes);
+  final modelList = outcomes.map((d) => CurriculumOutcome(
+    id: d.id, code: d.code!, description: d.description!, elaboration: d.elaboration,
+  )).toList();
 
-    // 2) convert to your model
-    final availableOutcomes = data.map((d) => CurriculumOutcome(
-      id: d.id,
-      code: d.code ?? '',
-      description: d.description ?? '',
-      elaboration: d.elaboration ?? '',
-    )).toList();
-
-    // 3) show editor
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => EnhancedEventEditor(
-        event: event,
-        availableOutcomes: availableOutcomes,
-        onEventUpdated: (u) {
-          setState(() {
-            final idx = _enhancedEvents.indexWhere((e) => e.id == u.id);
-            if (idx != -1) _enhancedEvents[idx] = u;
-          });
-        },
-      ),
-    );
-  }
+  await showModalBottomSheet(
+    context: context, isScrollControlled: true, backgroundColor: Colors.transparent,
+    builder: (_) => EnhancedEventEditor(
+      event: ev,
+      availableOutcomes: modelList,
+      onEventUpdated: (u) {
+        setState(() {
+          final i = _enhancedEvents.indexWhere((e) => e.id == u.id);
+          if (i != -1) _enhancedEvents[i] = u;
+        });
+      },
+    ),
+  );
+}
 
   double _calculateEventHeight(
     EnhancedEventBlock ev,
