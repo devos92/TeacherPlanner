@@ -132,12 +132,20 @@ class CurriculumService {
         .not('strand_id', 'is', null)
         .limit(20);
 
-      final strands = (response as List)
-        .map((e) => e['strand'] as Map<String, dynamic>)
-        .toSet()
-        .toList();
+      // Create a map to ensure unique strands by ID
+      final Map<String, Map<String, dynamic>> uniqueStrands = {};
+      
+      for (var item in response as List) {
+        final strand = item['strand'] as Map<String, dynamic>;
+        final strandId = strand['id'].toString();
+        
+        // Only add if we haven't seen this strand ID before
+        if (!uniqueStrands.containsKey(strandId)) {
+          uniqueStrands[strandId] = strand;
+        }
+      }
 
-      final result = strands.map((s) => CurriculumData(
+      final result = uniqueStrands.values.map((s) => CurriculumData(
         id: s['id'].toString(),
         name: s['name'],
         description: s['name'],
@@ -148,7 +156,7 @@ class CurriculumService {
       // Cache the result
       _strandCache[cacheKey] = result;
       
-      print('CurriculumService: Cached ${result.length} strands');
+      print('CurriculumService: Cached ${result.length} unique strands');
       return result;
     } catch (e) {
       print('CurriculumService: Error fetching strands for subject $subjectId: $e');
@@ -186,12 +194,16 @@ class CurriculumService {
       
       final outcomes = (response as List)
         .map((e) {
-          print('CurriculumService: Processing outcome - code: ${e['code']}, description: ${e['content_description']?.toString().substring(0, 50)}...');
+          final description = e['content_description']?.toString() ?? '';
+          final shortDescription = description.isNotEmpty && description.length > 50 
+            ? '${description.substring(0, 50)}...' 
+            : description;
+          print('CurriculumService: Processing outcome - code: ${e['code']}, description: $shortDescription');
           return CurriculumData(
             id: e['code'],
-            name: _getDisplayName(e),
+            name: description.isNotEmpty ? description : 'No description available',
             code: e['code'],
-            description: e['content_description'],
+            description: description.isNotEmpty ? description : null,
             elaboration: null, // Remove elaborations
             yearLevel: levelId,
             subjectCode: e['subject']?['name'],
@@ -220,7 +232,13 @@ class CurriculumService {
     _subjectCache.clear();
     _strandCache.clear();
     _outcomeCache.clear();
-    print('CurriculumService: Cache cleared');
+    print('CurriculumService: All caches cleared');
+  }
+
+  /// Clear specific cache for strands to force refresh
+  static void clearStrandCache() {
+    _strandCache.clear();
+    print('CurriculumService: Strand cache cleared');
   }
 
   /// Fetch sub-strands for a given strand and year (with caching) - using IDs directly
@@ -246,12 +264,20 @@ class CurriculumService {
         .not('sub_strand_id', 'is', null)
         .limit(20);
 
-      final subStrands = (response as List)
-        .map((e) => e['sub_strand'] as Map<String, dynamic>)
-        .toSet()
-        .toList();
+      // Create a map to ensure unique sub-strands by ID
+      final Map<String, Map<String, dynamic>> uniqueSubStrands = {};
+      
+      for (var item in response as List) {
+        final subStrand = item['sub_strand'] as Map<String, dynamic>;
+        final subStrandId = subStrand['id'].toString();
+        
+        // Only add if we haven't seen this sub-strand ID before
+        if (!uniqueSubStrands.containsKey(subStrandId)) {
+          uniqueSubStrands[subStrandId] = subStrand;
+        }
+      }
 
-      final result = subStrands.map((s) => CurriculumData(
+      final result = uniqueSubStrands.values.map((s) => CurriculumData(
         id: s['id'].toString(),
         name: s['name'],
         description: s['name'],
@@ -262,7 +288,7 @@ class CurriculumService {
       // Cache the result
       _strandCache[cacheKey] = result;
       
-      print('CurriculumService: Cached ${result.length} sub-strands');
+      print('CurriculumService: Cached ${result.length} unique sub-strands');
       return result;
     } catch (e) {
       print('CurriculumService: Error fetching sub-strands for strand $strandId: $e');
@@ -298,17 +324,20 @@ class CurriculumService {
         .limit(50);
 
       final outcomes = (response as List)
-        .map((e) => CurriculumData(
-          id: e['code'],
-          name: _getDisplayName(e),
-          code: e['code'],
-          description: e['content_description'],
-          elaboration: null, // Remove elaborations
-          yearLevel: levelId,
-          subjectCode: e['subject']?['name'],
-          strandId: e['strand']?['name'],
-          subStrand: e['sub_strand']?['name'],
-        ))
+        .map((e) {
+          final description = e['content_description']?.toString() ?? '';
+          return CurriculumData(
+            id: e['code'],
+            name: description.isNotEmpty ? description : 'No description available',
+            code: e['code'],
+            description: description.isNotEmpty ? description : null,
+            elaboration: null, // Remove elaborations
+            yearLevel: levelId,
+            subjectCode: e['subject']?['name'],
+            strandId: e['strand']?['name'],
+            subStrand: e['sub_strand']?['name'],
+          );
+        })
         .toList();
       
       // Cache the result
@@ -340,16 +369,19 @@ class CurriculumService {
         .inFilter('code', codes);
 
       return (response as List)
-        .map((e) => CurriculumData(
-          id: e['code'],
-          name: e['content_description'] ?? e['code'] ?? 'No description',
-          code: e['code'],
-          description: e['content_description'],
-          elaboration: e['elaboration'],
-          yearLevel: e['level']?['name'],
-          subjectCode: e['subject']?['name'],
-          strandId: e['strand']?['name'],
-        ))
+        .map((e) {
+          final description = e['content_description']?.toString() ?? '';
+          return CurriculumData(
+            id: e['code'],
+            name: description.isNotEmpty ? description : (e['code'] ?? 'No description'),
+            code: e['code'],
+            description: description.isNotEmpty ? description : null,
+            elaboration: e['elaboration'],
+            yearLevel: e['level']?['name'],
+            subjectCode: e['subject']?['name'],
+            strandId: e['strand']?['name'],
+          );
+        })
         .toList();
     } catch (e) {
       print('CurriculumService: Error fetching outcomes by IDs: $e');

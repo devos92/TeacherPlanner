@@ -35,6 +35,10 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   String? _selectedStrandId;
   String? _selectedSubStrandId;
   
+  // Selected outcomes - track selected outcomes
+  Set<String> _selectedOutcomeIds = {};
+  List<CurriculumData> _selectedOutcomes = [];
+  
   // Loading states
   bool _isLoadingYear = false;
   bool _isLoadingSubject = false;
@@ -45,6 +49,8 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   @override
   void initState() {
     super.initState();
+    // Clear all caches to ensure fixes take effect
+    CurriculumService.clearCache();
     _loadYears();
   }
 
@@ -197,8 +203,14 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                 ),
                 items: _years.map((year) => DropdownMenuItem(
                   value: year.id,
-                  child: Text(year.name, overflow: TextOverflow.ellipsis),
+                  child: Text(
+                    year.name, 
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13),
+                  ),
                 )).toList(),
+                menuMaxHeight: 200,
+                isExpanded: true,
                 onChanged: (value) async {
                   setState(() {
                     _selectedYearId = value;
@@ -231,8 +243,14 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                   ),
                   items: _subjects.map((subject) => DropdownMenuItem(
                     value: subject.id,
-                    child: Text(subject.name, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      subject.name, 
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13),
+                    ),
                   )).toList(),
+                  menuMaxHeight: 200, // Limit dropdown height
+                  isExpanded: true, // Make dropdown expand to fill width
                   onChanged: (value) async {
                     setState(() {
                       _selectedSubjectId = value;
@@ -264,8 +282,14 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                   ),
                   items: _strands.map((strand) => DropdownMenuItem(
                     value: strand.id,
-                    child: Text(strand.name, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      strand.name, 
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13),
+                    ),
                   )).toList(),
+                  menuMaxHeight: 200,
+                  isExpanded: true,
                   onChanged: (value) async {
                     setState(() {
                       _selectedStrandId = value;
@@ -296,8 +320,14 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                   ),
                   items: _subStrands.map((subStrand) => DropdownMenuItem(
                     value: subStrand.id,
-                    child: Text(subStrand.name, overflow: TextOverflow.ellipsis),
+                    child: Text(
+                      subStrand.name, 
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 13),
+                    ),
                   )).toList(),
+                  menuMaxHeight: 200,
+                  isExpanded: true,
                   onChanged: (value) async {
                     setState(() {
                       _selectedSubStrandId = value;
@@ -313,7 +343,14 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
 
         // Outcomes List
         if (_outcomes.isNotEmpty) ...[
-          Text('Curriculum Outcomes', style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('Curriculum Outcomes', style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+              if (_selectedOutcomes.isNotEmpty)
+                Text('${_selectedOutcomes.length} selected', style: theme.textTheme.bodySmall?.copyWith(color: theme.primaryColor)),
+            ],
+          ),
           SizedBox(height: 8),
           _isLoadingOutcomes
               ? Center(child: CircularProgressIndicator())
@@ -323,42 +360,108 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
                     border: Border.all(color: theme.dividerColor),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: ListView.builder(
-                    itemCount: _outcomes.length,
-                    itemBuilder: (context, index) {
-                      final outcome = _outcomes[index];
-                      return Card(
-                        margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        elevation: 1,
-                        child: Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Column(
+                    children: [
+                      // Clear selection button
+                      if (_selectedOutcomes.isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.all(8),
+                          child: Row(
                             children: [
-                              // Code
-                              if (outcome.code != null) ...[
-                                Text(
-                                  outcome.code!,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'monospace',
-                                    color: theme.textTheme.bodySmall?.color,
-                                  ),
-                                ),
-                                SizedBox(height: 6),
-                              ],
-                              // Description
-                              Text(
-                                outcome.name,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  height: 1.3,
+                              Expanded(
+                                child: TextButton.icon(
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedOutcomeIds.clear();
+                                      _selectedOutcomes.clear();
+                                    });
+                                    widget.onSelectionChanged([]);
+                                  },
+                                  icon: Icon(Icons.clear, size: 16),
+                                  label: Text('Clear Selection'),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      );
-                    },
+                      // Outcomes list
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: _outcomes.length,
+                          itemBuilder: (context, index) {
+                            final outcome = _outcomes[index];
+                            final isSelected = _selectedOutcomeIds.contains(outcome.id);
+                            
+                            return Card(
+                              margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              elevation: 1,
+                              color: isSelected ? theme.primaryColor.withOpacity(0.1) : null,
+                              child: InkWell(
+                                onTap: () {
+                                  setState(() {
+                                    if (isSelected) {
+                                      _selectedOutcomeIds.remove(outcome.id);
+                                      _selectedOutcomes.removeWhere((o) => o.id == outcome.id);
+                                    } else {
+                                      _selectedOutcomeIds.add(outcome.id);
+                                      _selectedOutcomes.add(outcome);
+                                    }
+                                  });
+                                  // Don't notify parent on every selection change
+                                  // Only notify when Add button is clicked
+                                },
+                                child: Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: Row(
+                                    children: [
+                                      // Selection indicator
+                                      Icon(
+                                        isSelected ? Icons.check_circle : Icons.radio_button_unchecked,
+                                        color: isSelected ? theme.primaryColor : theme.dividerColor,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      // Content
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            // Code
+                                            if (outcome.code != null) ...[
+                                              Text(
+                                                outcome.code!,
+                                                style: theme.textTheme.bodySmall?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  fontFamily: 'monospace',
+                                                  color: theme.primaryColor,
+                                                ),
+                                              ),
+                                              SizedBox(height: 6),
+                                            ],
+                                            // Description
+                                            Text(
+                                              outcome.description?.isNotEmpty == true 
+                                                ? outcome.description!
+                                                : (outcome.code?.isNotEmpty == true 
+                                                    ? 'Curriculum Code: ${outcome.code}' 
+                                                    : 'No description available'),
+                                              style: theme.textTheme.bodyMedium?.copyWith(
+                                                height: 1.3,
+                                              ),
+                                              // Remove maxLines and overflow to show full description
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ),
         ],
@@ -369,14 +472,16 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _selectedStrandId != null ? () {
+              onPressed: _selectedOutcomes.isNotEmpty ? () {
                 // Handle adding selected outcomes
-                if (_outcomes.isNotEmpty) {
-                  widget.onSelectionChanged(_outcomes);
-                }
+                widget.onSelectionChanged(_selectedOutcomes);
+                // Automatically minimize the sidebar
+                setState(() => _expanded = false);
               } : null,
               icon: Icon(Icons.add),
-              label: Text('Add Curriculum Outcomes'),
+              label: Text(_selectedOutcomes.isNotEmpty 
+                ? 'Add ${_selectedOutcomes.length} Selected Outcomes' 
+                : 'Add Curriculum Outcomes'),
             ),
           ),
         ],
@@ -401,19 +506,139 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
     ),
   );
 
-  Widget _buildSummaryView(ThemeData theme) => Center(
+  Widget _buildSummaryView(ThemeData theme) => SingleChildScrollView(
+    padding: EdgeInsets.all(16),
     child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.school, size: 48, color: theme.primaryColor.withOpacity(0.5)),
-        SizedBox(height: 8),
-        Text(
-          'Curriculum\nOutcomes',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.primaryColor.withOpacity(0.7),
-          ),
+        // Header
+        Row(
+          children: [
+            Icon(Icons.school, color: theme.primaryColor),
+            SizedBox(width: 8),
+            Text(
+              'Selected Outcomes',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.primaryColor,
+              ),
+            ),
+            Spacer(),
+            Text(
+              '${_selectedOutcomes.length}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.primaryColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
+        SizedBox(height: 16),
+        
+        // Selected outcomes list
+        if (_selectedOutcomes.isNotEmpty) ...[
+          Container(
+            constraints: BoxConstraints(maxHeight: 300),
+            child: SingleChildScrollView(
+              child: Column(
+                children: _selectedOutcomes.map((outcome) => Card(
+                  margin: EdgeInsets.only(bottom: 6),
+                  elevation: 1,
+                  child: Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Content
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Code
+                              if (outcome.code != null) ...[
+                                Text(
+                                  outcome.code!,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: 'monospace',
+                                    color: theme.primaryColor,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                                SizedBox(height: 4),
+                              ],
+                              // Full description
+                              Text(
+                                outcome.description?.isNotEmpty == true 
+                                  ? outcome.description!
+                                  : (outcome.code?.isNotEmpty == true 
+                                      ? 'Curriculum Code: ${outcome.code}' 
+                                      : 'No description available'),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  height: 1.2,
+                                  fontSize: 10,
+                                ),
+                                // Remove maxLines and overflow to show full description
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Remove button
+                        IconButton(
+                          icon: Icon(Icons.remove_circle_outline, 
+                            color: Colors.red, 
+                            size: 16),
+                          onPressed: () {
+                            setState(() {
+                              _selectedOutcomeIds.remove(outcome.id);
+                              _selectedOutcomes.removeWhere((o) => o.id == outcome.id);
+                            });
+                            // Notify parent of the change
+                            widget.onSelectionChanged(_selectedOutcomes);
+                          },
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(
+                            minWidth: 20,
+                            minHeight: 20,
+                          ),
+                          tooltip: 'Remove from selection',
+                        ),
+                      ],
+                    ),
+                  ),
+                )).toList(),
+              ),
+            ),
+          ),
+        ] else ...[
+          // No outcomes selected message
+          Card(
+            child: Padding(
+              padding: EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Icon(Icons.school, size: 32, color: theme.primaryColor.withOpacity(0.5)),
+                  SizedBox(height: 8),
+                  Text(
+                    'No outcomes selected',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.primaryColor.withOpacity(0.7),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Expand to select curriculum outcomes',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.primaryColor.withOpacity(0.5),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ],
     ),
   );

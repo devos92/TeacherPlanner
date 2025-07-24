@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/curriculum_models.dart';
+import '../models/event_block.dart';
 import '../services/curriculum_service.dart';
 import '../services/storage_service.dart';
 import '../widgets/curriculum_sidebar.dart';
@@ -95,7 +96,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
             CurriculumSidebar(
               width: 300,
               onSelectionChanged: (outcomes) {
-                // Convert CurriculumData to CurriculumOutcome and add to selected outcomes
+                // Convert CurriculumData to CurriculumOutcome and replace selected outcomes
                 final newOutcomes = outcomes.map((outcome) => CurriculumOutcome(
                   id: outcome.id,
                   code: outcome.code ?? '',
@@ -103,10 +104,10 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                   elaboration: outcome.elaboration ?? '',
                 )).toList();
                 
-                // Add to existing selected outcomes
+                // Replace the selected outcomes (don't add to existing)
                 setState(() {
-                  _selectedOutcomes.addAll(newOutcomes);
-                  _selectedOutcomeCodes.addAll(newOutcomes.map((o) => o.code));
+                  _selectedOutcomes = newOutcomes;
+                  _selectedOutcomeCodes = newOutcomes.map((o) => o.code).toList();
                 });
               },
             ),
@@ -167,6 +168,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                       ],
                     ),
                   ),
+                  
                   // (Reflection and attachments would go here)
                 ],
               ),

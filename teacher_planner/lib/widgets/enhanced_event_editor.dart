@@ -445,8 +445,7 @@ class _EnhancedEventEditorState extends State<EnhancedEventEditor> {
                         subtitle: Text(
                           outcome.description,
                           style: theme.textTheme.bodySmall,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                          // Remove maxLines and overflow to show full description
                         ),
                         trailing: IconButton(
                           icon: Icon(Icons.remove_circle_outline, 
