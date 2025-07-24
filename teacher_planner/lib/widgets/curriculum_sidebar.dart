@@ -1,16 +1,13 @@
 // lib/widgets/curriculum_sidebar.dart
 
 import 'package:flutter/material.dart';
-import '../models/curriculum_models.dart';
 import '../services/curriculum_service.dart';
+import '../models/curriculum_models.dart';
 
-/// A sidebar that loads the entire curriculum hierarchy once and then
-/// provides cascading dropdowns from the in-memory tree.
 class CurriculumSidebar extends StatefulWidget {
   final List<String> selectedOutcomeIds;
   final ValueChanged<List<String>> onOutcomesChanged;
   final double width;
-
 
   const CurriculumSidebar({
     Key? key,
@@ -24,30 +21,20 @@ class CurriculumSidebar extends StatefulWidget {
 }
 
 class _CurriculumSidebarState extends State<CurriculumSidebar> {
-  bool _isExpanded = false;
-  bool _isLoading = true;
+  Map<String, dynamic> _tree = {};
+  List<String> _years = [];
+  List<String> _subjects = [];
+  List<String> _strands = [];
+  List<String> _subStrands = [];
+  List<dynamic> _outcomes = [];
+
   String? _selectedYear;
   String? _selectedSubject;
   String? _selectedStrand;
   String? _selectedSubStrand;
 
-  // Full nested tree: year -> subject -> strand -> subStrand -> list of outcomes
-  Map<String, Map<String, Map<String, Map<String, List<CurriculumData>>>>> _tree = {};
-
-  List<String> get _years => _tree.keys.toList();
-  List<String> get _subjects => _selectedYear != null ? _tree[_selectedYear]!.keys.toList() : [];
-  List<String> get _strands => (_selectedYear != null && _selectedSubject != null)
-      ? _tree[_selectedYear]![_selectedSubject]!.keys.toList()
-      : [];
-  List<String> get _subStrands => (_selectedYear != null && _selectedSubject != null && _selectedStrand != null)
-      ? _tree[_selectedYear]![_selectedSubject]![_selectedStrand]!.keys.toList()
-      : [];
-  List<CurriculumData> get _outcomes => (_selectedYear != null
-      && _selectedSubject != null
-      && _selectedStrand != null
-      && _selectedSubStrand != null)
-    ? _tree[_selectedYear]![_selectedSubject]![_selectedStrand]![_selectedSubStrand]!
-    : [];
+  bool _loading = true;
+  bool _showElaboration = false;
 
   @override
   void initState() {
@@ -56,23 +43,58 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   }
 
   Future<void> _loadTree() async {
-    setState(() => _isLoading = true);
-    try {
-     final tree = await CurriculumService.getCurriculumTree();
-      // pick first values if available
-      if (_tree.isNotEmpty) {
-        _selectedYear = _tree.keys.first;
-        final subs = _subjects;
-        if (subs.isNotEmpty) _selectedSubject = subs.first;
-        final str = _strands;
-        if (str.isNotEmpty) _selectedStrand = str.first;
-        final sub = _subStrands;
-        if (sub.isNotEmpty) _selectedSubStrand = sub.first;
-      }
-    } catch (e) {
-      _tree = {};
+    final tree = await CurriculumService.getCurriculumTree();
+    setState(() {
+      _tree = tree;
+      _years = tree.keys.toList()..sort();
+      _selectedYear = _years.isNotEmpty ? _years.first : null;
+      _loading = false;
+    });
+    _updateSubjectList();
+  }
+
+  void _updateSubjectList() {
+    if (_selectedYear == null) return;
+    final subjMap = Map<String, dynamic>.from(_tree[_selectedYear]!);
+    setState(() {
+      _subjects = subjMap.keys.toList()..sort();
+      _selectedSubject = _subjects.isNotEmpty ? _subjects.first : null;
+    });
+    _updateStrandList();
+  }
+
+  void _updateStrandList() {
+    if (_selectedYear == null || _selectedSubject == null) return;
+    final subjMap = Map<String, dynamic>.from(_tree[_selectedYear]![_selectedSubject]!);
+    setState(() {
+      _strands = subjMap.keys.toList()..sort();
+      _selectedStrand = _strands.isNotEmpty ? _strands.first : null;
+    });
+    _updateSubStrandList();
+  }
+
+  void _updateSubStrandList() {
+    if (_selectedYear == null || _selectedSubject == null || _selectedStrand == null) return;
+    final strandMap = Map<String, dynamic>.from(
+      _tree[_selectedYear]![_selectedSubject]![_selectedStrand]!);
+    setState(() {
+      _subStrands = strandMap.keys.toList()..sort();
+      _selectedSubStrand = _subStrands.isNotEmpty ? _subStrands.first : null;
+    });
+    _updateOutcomeList();
+  }
+
+  void _updateOutcomeList() {
+    if (_selectedYear == null || _selectedSubject == null || _selectedStrand == null) return;
+    final list = _tree[_selectedYear]![_selectedSubject]![_selectedStrand]!;
+    if (_selectedSubStrand != null && list is Map<String, dynamic>) {
+      _outcomes = list[_selectedSubStrand!] as List<dynamic>;
+    } else if (list is List<dynamic>) {
+      _outcomes = list;
+    } else {
+      _outcomes = [];
     }
-    setState(() => _isLoading = false);
+    setState(() {});
   }
 
   @override
@@ -80,159 +102,120 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
     final theme = Theme.of(context);
     return Container(
       width: widget.width,
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        border: Border(right: BorderSide(color: theme.dividerColor)),
-      ),
-      child: Column(
-        children: [
-          // Header
-          Container(
-            padding: EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.primaryColor.withOpacity(0.1),
-              border: Border(bottom: BorderSide(color: theme.dividerColor)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.school, color: theme.primaryColor),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Curriculum Outcomes',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    overflow: TextOverflow.ellipsis,
+      color: theme.cardColor,
+      child: _loading
+          ? Center(child: CircularProgressIndicator())
+          : Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Curriculum', style: theme.textTheme.titleMedium),
+                  SizedBox(height: 12),
+                  _buildDropdown(
+                    label: 'Year',
+                    items: _years,
+                    value: _selectedYear,
+                    onChanged: (v) => setState(() {
+                      _selectedYear = v;
+                      _updateSubjectList();
+                    }),
                   ),
-                ),
-                IconButton(
-                  icon: Icon(_isExpanded ? Icons.close : Icons.add),
-                  onPressed: () => setState(() => _isExpanded = !_isExpanded),
-                ),
-              ],
-            ),
-          ),
-          // Body
-          Expanded(
-            child: _isExpanded
-              ? _isLoading
-                  ? Center(child: CircularProgressIndicator())
-                  : _buildExpandedView(theme)
-              : _buildCollapsedView(theme),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCollapsedView(ThemeData theme) {
-    final selected = _outcomes.where((o) => widget.selectedOutcomeIds.contains(o.id)).toList();
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16),
-      child: Column(
-        children: [
-          ElevatedButton.icon(
-            onPressed: () => setState(() => _isExpanded = true),
-            icon: Icon(Icons.add),
-            label: Text('Add Outcomes'),
-          ),
-          SizedBox(height: 16),
-          if (selected.isEmpty)
-            Text('No outcomes selected', style: theme.textTheme.bodyMedium)
-          else
-            ...selected.map((o) => ListTile(
-              title: Text(o.description ?? ''),
-              trailing: IconButton(
-                icon: Icon(Icons.remove_circle, color: Colors.red),
-                onPressed: () {
-                  final list = List<String>.from(widget.selectedOutcomeIds)..remove(o.id);
-                  widget.onOutcomesChanged(list);
-                },
+                  if (_subjects.isNotEmpty) ...[
+                    SizedBox(height: 12),
+                    _buildDropdown(
+                      label: 'Subject',
+                      items: _subjects,
+                      value: _selectedSubject,
+                      onChanged: (v) => setState(() {
+                        _selectedSubject = v;
+                        _updateStrandList();
+                      }),
+                    ),
+                  ],
+                  if (_strands.isNotEmpty) ...[
+                    SizedBox(height: 12),
+                    _buildDropdown(
+                      label: 'Strand',
+                      items: _strands,
+                      value: _selectedStrand,
+                      onChanged: (v) => setState(() {
+                        _selectedStrand = v;
+                        _updateSubStrandList();
+                      }),
+                    ),
+                  ],
+                  if (_subStrands.isNotEmpty) ...[
+                    SizedBox(height: 12),
+                    _buildDropdown(
+                      label: 'Sub-strand',
+                      items: _subStrands,
+                      value: _selectedSubStrand,
+                      onChanged: (v) => setState(() {
+                        _selectedSubStrand = v;
+                        _updateOutcomeList();
+                      }),
+                    ),
+                  ],
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      ChoiceChip(
+                        label: Text('Description'),
+                        selected: !_showElaboration,
+                        onSelected: (_) => setState(() => _showElaboration = false),
+                      ),
+                      SizedBox(width: 8),
+                      ChoiceChip(
+                        label: Text('Elaboration'),
+                        selected: _showElaboration,
+                        onSelected: (_) => setState(() => _showElaboration = true),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: _outcomes.length,
+                      itemBuilder: (_, i) {
+                        final data = _outcomes[i] as Map<String, dynamic>;
+                        final id = data['code'] as String;
+                        final desc = data[_showElaboration ? 'elaboration' : 'content_description'] as String? ?? '';
+                        final selected = widget.selectedOutcomeIds.contains(id);
+                        return CheckboxListTile(
+                          title: Text(id),
+                          subtitle: Text(desc, maxLines: 2, overflow: TextOverflow.ellipsis),
+                          value: selected,
+                          onChanged: (v) {
+                            final list = List<String>.from(widget.selectedOutcomeIds);
+                            if (v == true) list.add(id); else list.remove(id);
+                            widget.onOutcomesChanged(list);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            )),
-        ],
-      ),
+            ),
     );
   }
 
-  Widget _buildExpandedView(ThemeData theme) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Year
-          _buildDropdown(theme, 'Year Level', _years, _selectedYear, (v) {
-            setState(() {
-              _selectedYear = v;
-              _selectedSubject = _selectedStrand = _selectedSubStrand = null;
-            });
-          }),
-
-          if (_selectedYear != null) _buildDropdown(
-            theme, 'Subject', _subjects, _selectedSubject, (v) {
-              setState(() {
-                _selectedSubject = v;
-                _selectedStrand = _selectedSubStrand = null;
-              });
-            }),
-
-          if (_selectedSubject != null) _buildDropdown(
-            theme, 'Strand', _strands, _selectedStrand, (v) {
-              setState(() {
-                _selectedStrand = v;
-                _selectedSubStrand = null;
-              });
-            }),
-
-          if (_selectedStrand != null) _buildDropdown(
-            theme, 'Sub-Strand', _subStrands, _selectedSubStrand, (v) {
-              setState(() => _selectedSubStrand = v);
-            }),
-
-          Padding(
-            padding: EdgeInsets.all(16),
-            child: _buildOutcomeList(theme),
-          ),
-        ],
+  Widget _buildDropdown({
+    required String label,
+    required List<String> items,
+    required String? value,
+    required ValueChanged<String?> onChanged,
+  }) {
+    return DropdownButtonFormField<String>(
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(),
       ),
-    );
-  }
-
-  Widget _buildDropdown(
-    ThemeData theme,
-    String label,
-    List<String> items,
-    String? value,
-    ValueChanged<String?> onChanged,
-  ) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: DropdownButtonFormField<String>(
-        value: value,
-        decoration: InputDecoration(labelText: label, border: OutlineInputBorder()),
-        items: items
-            .map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis)))
-            .toList(),
-        onChanged: onChanged,
-      ),
-    );
-  }
-
-  Widget _buildOutcomeList(ThemeData theme) {
-    final list = _outcomes;
-    return Column(
-      children: list.map((o) {
-        final selected = widget.selectedOutcomeIds.contains(o.id);
-        return CheckboxListTile(
-          title: Text(o.code ?? ''),
-          subtitle: Text(o.description ?? ''),
-          value: selected,
-          onChanged: (v) {
-            final newList = List<String>.from(widget.selectedOutcomeIds);
-            if (v == true) newList.add(o.id); else newList.remove(o.id);
-            widget.onOutcomesChanged(newList);
-          },
-        );
-      }).toList(),
+      items: items.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+      value: value,
+      onChanged: onChanged,
     );
   }
 }
