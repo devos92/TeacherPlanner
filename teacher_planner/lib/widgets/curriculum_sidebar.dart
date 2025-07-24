@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 import '../models/curriculum_models.dart';
 import '../services/curriculum_service.dart';
 
-/// Sidebar widget allowing users to select curriculum outcomes via cascading dropdowns.
+/// A sidebar that loads the entire curriculum hierarchy once and then
+/// provides cascading dropdowns from the in-memory tree.
 class CurriculumSidebar extends StatefulWidget {
   final List<String> selectedOutcomeIds;
   final ValueChanged<List<String>> onOutcomesChanged;
   final double width;
+
 
   const CurriculumSidebar({
     Key? key,
@@ -23,109 +25,54 @@ class CurriculumSidebar extends StatefulWidget {
 
 class _CurriculumSidebarState extends State<CurriculumSidebar> {
   bool _isExpanded = false;
+  bool _isLoading = true;
+  String? _selectedYear;
+  String? _selectedSubject;
+  String? _selectedStrand;
+  String? _selectedSubStrand;
 
-  // Selected IDs
-  String? selectedYearId;
-  String? selectedSubjectId;
-  String? selectedStrandId;
-  String? selectedSubStrandId;
+  // Full nested tree: year -> subject -> strand -> subStrand -> list of outcomes
+  Map<String, Map<String, Map<String, Map<String, List<CurriculumData>>>>> _tree = {};
 
-  // Loading flags
-  bool _isLoadingYear = false;
-  bool _isLoadingSubject = false;
-  bool _isLoadingStrands = false;
-  bool _isLoadingSubStrands = false;
-  bool _isLoadingOutcomes = false;
-
-  // Data lists
-  List<CurriculumData> _years = [];
-  List<CurriculumData> _subjects = [];
-  List<CurriculumData> _strands = [];
-  List<CurriculumData> _subStrands = [];
-  List<CurriculumData> _outcomes = [];
+  List<String> get _years => _tree.keys.toList();
+  List<String> get _subjects => _selectedYear != null ? _tree[_selectedYear]!.keys.toList() : [];
+  List<String> get _strands => (_selectedYear != null && _selectedSubject != null)
+      ? _tree[_selectedYear]![_selectedSubject]!.keys.toList()
+      : [];
+  List<String> get _subStrands => (_selectedYear != null && _selectedSubject != null && _selectedStrand != null)
+      ? _tree[_selectedYear]![_selectedSubject]![_selectedStrand]!.keys.toList()
+      : [];
+  List<CurriculumData> get _outcomes => (_selectedYear != null
+      && _selectedSubject != null
+      && _selectedStrand != null
+      && _selectedSubStrand != null)
+    ? _tree[_selectedYear]![_selectedSubject]![_selectedStrand]![_selectedSubStrand]!
+    : [];
 
   @override
   void initState() {
     super.initState();
-    _loadYears();
+    _loadTree();
   }
 
-  Future<void> _loadYears() async {
-    setState(() { _isLoadingYear = true; });
+  Future<void> _loadTree() async {
+    setState(() => _isLoading = true);
     try {
-      _years = await CurriculumService.getYears();
-      selectedYearId = _years.isNotEmpty ? _years.first.id : null;
-      if (selectedYearId != null) _loadSubjects();
-    } catch (_) {
-      _years = [];
-    }
-    setState(() { _isLoadingYear = false; });
-  }
-
-  Future<void> _loadSubjects() async {
-    if (selectedYearId == null) return;
-    setState(() { _isLoadingSubject = true; });
-    try {
-      final yearName = _years.firstWhere((y) => y.id == selectedYearId).name;
-      _subjects = await CurriculumService.getSubjectsForYear(yearName);
-      selectedSubjectId = _subjects.isNotEmpty ? _subjects.first.id : null;
-      if (selectedSubjectId != null) _loadStrands();
-    } catch (_) {
-      _subjects = [];
-    }
-    setState(() { _isLoadingSubject = false; });
-  }
-
-  Future<void> _loadStrands() async {
-    if (selectedSubjectId == null || selectedYearId == null) return;
-    setState(() { _isLoadingStrands = true; });
-    try {
-      final yearName = _years.firstWhere((y) => y.id == selectedYearId).name;
-      _strands = await CurriculumService.getStrandsForSubjectAndYear(selectedSubjectId!, yearName);
-      selectedStrandId = _strands.isNotEmpty ? _strands.first.id : null;
-      if (selectedStrandId != null) _loadSubStrands();
-      else _loadOutcomes();
-    } catch (_) {
-      _strands = [];
-    }
-    setState(() { _isLoadingStrands = false; });
-  }
-
-  Future<void> _loadSubStrands() async {
-    if (selectedStrandId == null || selectedYearId == null) return;
-    setState(() { _isLoadingSubStrands = true; });
-    try {
-      final yearName = _years.firstWhere((y) => y.id == selectedYearId).name;
-      _subStrands = await CurriculumService.getSubStrandsForStrandAndYear(selectedStrandId!, yearName);
-      selectedSubStrandId = _subStrands.isNotEmpty ? _subStrands.first.id : null;
-      _loadOutcomes();
-    } catch (_) {
-      _subStrands = [];
-    }
-    setState(() { _isLoadingSubStrands = false; });
-  }
-
-  Future<void> _loadOutcomes() async {
-    if (selectedYearId == null) return;
-    setState(() { _isLoadingOutcomes = true; });
-    try {
-      final yearName = _years.firstWhere((y) => y.id == selectedYearId).name;
-      if (selectedSubStrandId != null) {
-        _outcomes = await CurriculumService.getOutcomesForSubStrandAndYear(
-          selectedStrandId!, selectedSubStrandId!, yearName);
-      } else if (selectedStrandId != null) {
-        _outcomes = await CurriculumService.getOutcomesForSubStrandAndYear(
-          selectedStrandId!, '', yearName);
-      } else if (selectedSubjectId != null) {
-        _outcomes = await CurriculumService.getOutcomesBySubjectAndYear(
-          selectedSubjectId!, yearName);
-      } else {
-        _outcomes = [];
+     final tree = await CurriculumService.getCurriculumTree();
+      // pick first values if available
+      if (_tree.isNotEmpty) {
+        _selectedYear = _tree.keys.first;
+        final subs = _subjects;
+        if (subs.isNotEmpty) _selectedSubject = subs.first;
+        final str = _strands;
+        if (str.isNotEmpty) _selectedStrand = str.first;
+        final sub = _subStrands;
+        if (sub.isNotEmpty) _selectedSubStrand = sub.first;
       }
-    } catch (_) {
-      _outcomes = [];
+    } catch (e) {
+      _tree = {};
     }
-    setState(() { _isLoadingOutcomes = false; });
+    setState(() => _isLoading = false);
   }
 
   @override
@@ -164,8 +111,13 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
               ],
             ),
           ),
+          // Body
           Expanded(
-            child: _isExpanded ? _buildExpandedView(theme) : _buildCollapsedView(theme),
+            child: _isExpanded
+              ? _isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : _buildExpandedView(theme)
+              : _buildCollapsedView(theme),
           ),
         ],
       ),
@@ -181,7 +133,7 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
           ElevatedButton.icon(
             onPressed: () => setState(() => _isExpanded = true),
             icon: Icon(Icons.add),
-            label: Text('Add Curriculum Outcomes'),
+            label: Text('Add Outcomes'),
           ),
           SizedBox(height: 16),
           if (selected.isEmpty)
@@ -207,104 +159,77 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildDropdown(
-            label: 'Year Level',
-            isLoading: _isLoadingYear,
-            value: selectedYearId,
-            items: _years,
-            onChanged: (v) => setState(() {
-              selectedYearId = v;
-              selectedSubjectId = selectedStrandId = selectedSubStrandId = null;
-              _subjects.clear(); _strands.clear(); _subStrands.clear(); _outcomes.clear();
-              _loadSubjects();
+          // Year
+          _buildDropdown(theme, 'Year Level', _years, _selectedYear, (v) {
+            setState(() {
+              _selectedYear = v;
+              _selectedSubject = _selectedStrand = _selectedSubStrand = null;
+            });
+          }),
+
+          if (_selectedYear != null) _buildDropdown(
+            theme, 'Subject', _subjects, _selectedSubject, (v) {
+              setState(() {
+                _selectedSubject = v;
+                _selectedStrand = _selectedSubStrand = null;
+              });
             }),
-          ),
-          _buildDropdown(
-            label: 'Subject',
-            isLoading: _isLoadingSubject,
-            value: selectedSubjectId,
-            items: _subjects,
-            onChanged: (v) => setState(() {
-              selectedSubjectId = v;
-              selectedStrandId = selectedSubStrandId = null;
-              _strands.clear(); _subStrands.clear(); _outcomes.clear();
-              _loadStrands();
+
+          if (_selectedSubject != null) _buildDropdown(
+            theme, 'Strand', _strands, _selectedStrand, (v) {
+              setState(() {
+                _selectedStrand = v;
+                _selectedSubStrand = null;
+              });
             }),
-          ),
-          _buildDropdown(
-            label: 'Strand',
-            isLoading: _isLoadingStrands,
-            value: selectedStrandId,
-            items: _strands,
-            onChanged: (v) => setState(() {
-              selectedStrandId = v;
-              selectedSubStrandId = null;
-              _subStrands.clear(); _outcomes.clear();
-              _loadSubStrands();
+
+          if (_selectedStrand != null) _buildDropdown(
+            theme, 'Sub-Strand', _subStrands, _selectedSubStrand, (v) {
+              setState(() => _selectedSubStrand = v);
             }),
-          ),
-          _buildDropdown(
-            label: 'Sub‐Strand',
-            isLoading: _isLoadingSubStrands,
-            value: selectedSubStrandId,
-            items: _subStrands,
-            onChanged: (v) => setState(() {
-              selectedSubStrandId = v;
-              _outcomes.clear();
-              _loadOutcomes();
-            }),
-          ),
+
           Padding(
             padding: EdgeInsets.all(16),
-            child: _isLoadingOutcomes
-              ? Center(child: CircularProgressIndicator())
-              : _buildOutcomeList(theme),
+            child: _buildOutcomeList(theme),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildDropdown({
-    required String label,
-    required bool isLoading,
-    required String? value,
-    required List<CurriculumData> items,
-    required ValueChanged<String?> onChanged,
-  }) {
-    if (isLoading) return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Center(child: CircularProgressIndicator()),
-    );
+  Widget _buildDropdown(
+    ThemeData theme,
+    String label,
+    List<String> items,
+    String? value,
+    ValueChanged<String?> onChanged,
+  ) {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: DropdownButtonFormField<String>(
         value: value,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(),
-        ),
-        items: items.map((d) => DropdownMenuItem(
-          value: d.id,
-          child: Text(d.name, overflow: TextOverflow.ellipsis),
-        )).toList(),
+        decoration: InputDecoration(labelText: label, border: OutlineInputBorder()),
+        items: items
+            .map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis)))
+            .toList(),
         onChanged: onChanged,
       ),
     );
   }
 
   Widget _buildOutcomeList(ThemeData theme) {
+    final list = _outcomes;
     return Column(
-      children: _outcomes.map((o) {
+      children: list.map((o) {
         final selected = widget.selectedOutcomeIds.contains(o.id);
         return CheckboxListTile(
           title: Text(o.code ?? ''),
           subtitle: Text(o.description ?? ''),
           value: selected,
           onChanged: (v) {
-            final list = List<String>.from(widget.selectedOutcomeIds);
-            if (v == true) list.add(o.id); else list.remove(o.id);
-            widget.onOutcomesChanged(list);
+            final newList = List<String>.from(widget.selectedOutcomeIds);
+            if (v == true) newList.add(o.id); else newList.remove(o.id);
+            widget.onOutcomesChanged(newList);
           },
         );
       }).toList(),
