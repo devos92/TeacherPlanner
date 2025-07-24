@@ -1,13 +1,10 @@
 // lib/pages/home_page.dart
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../services/curriculum_service.dart';
 import 'week_view.dart';
 import 'month_view.dart';
 import 'day_view.dart';
 import 'enhanced_day_detail_page.dart';
-import 'curriculum_browser_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -21,15 +18,6 @@ class _HomePageState extends State<HomePage> {
     WeekView(),
     DayView(),
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    // Initialize the curriculum service
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<CurriculumService>().initialize();
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,44 +41,22 @@ class _HomePageState extends State<HomePage> {
         ],
         onTap: (i) => setState(() => _currentIndex = i),
       ),
-      floatingActionButton: Column(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          FloatingActionButton(
-            onPressed: () {
-              // Navigate to curriculum browser
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => CurriculumBrowserPage(),
-                ),
-              );
-            },
-            child: Icon(Icons.school),
-            tooltip: 'Curriculum Browser',
-            heroTag: 'curriculum',
-            mini: true,
-          ),
-          SizedBox(height: 8),
-          FloatingActionButton(
-            onPressed: () {
-              // Navigate to enhanced day detail page
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => EnhancedDayDetailPage(
-                    day: 'Mon',
-                    events: [], // Add empty events list
-                  ),
-                ),
-              );
-            },
-            child: Icon(Icons.edit),
-            tooltip: 'Day Detail',
-            heroTag: 'day_detail',
-            mini: true,
-          ),
-        ],
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Navigate to enhanced day detail page
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => EnhancedDayDetailPage(
+                day: 'Mon',
+                events: [], // Add empty events list
+              ),
+            ),
+          );
+        },
+        child: Icon(Icons.edit),
+        tooltip: 'Day Detail',
+        heroTag: 'day_detail',
       ),
     );
   }

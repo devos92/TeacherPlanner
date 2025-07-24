@@ -2,6 +2,45 @@
 
 import 'package:flutter/material.dart';
 
+// Curriculum Data model for the service
+class CurriculumData {
+  final String id;
+  final String name;
+  final String? code;
+  final String? description;
+  final String? elaboration;
+  final String? yearLevel;
+  final String? subjectCode;
+  final String? strandId;
+  final String? subStrand;
+
+  CurriculumData({
+    required this.id,
+    required this.name,
+    this.code,
+    this.description,
+    this.elaboration,
+    this.yearLevel,
+    this.subjectCode,
+    this.strandId,
+    this.subStrand,
+  });
+
+  factory CurriculumData.fromJson(Map<String, dynamic> json) {
+    return CurriculumData(
+      id: json['id']?.toString() ?? '',
+      name: json['name'] ?? json['description'] ?? '',
+      code: json['code'],
+      description: json['description'],
+      elaboration: json['elaboration'],
+      yearLevel: json['year_level'],
+      subjectCode: json['subject_code'],
+      strandId: json['strand_id'],
+      subStrand: json['sub_strand'],
+    );
+  }
+}
+
 // Australian Curriculum Models
 class CurriculumYear {
   final String id;
