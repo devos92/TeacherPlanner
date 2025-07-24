@@ -29,11 +29,11 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
 
   // Day colors for visual distinction
   static const List<Color> _dayColors = [
-    Color(0xFFE1BEE7), // Monday - Light Purple
-    Color(0xFFFFCC80), // Tuesday - Light Orange
-    Color(0xFFC8E6C9), // Wednesday - Light Green
-    Color(0xFFF8BBD9), // Thursday - Light Pink
-    Color(0xFFB2DFDB), // Friday - Light Teal
+    Color(0xA3A380), // Monday - Light Purple
+    Color(0xD7CE93), // Tuesday - Light Orange
+    Color(0xEFEBCE), // Wednesday - Light Green
+    Color(0xD8A48F), // Thursday - Light Pink
+    Color(0xBB8588), // Friday - Light Teal
   ];
 
   static const List<String> _dayNames = [
@@ -903,6 +903,17 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
   }
 
   Widget _buildEmptyCell(WeeklyPlanData data, ThemeData theme, int dayIndex) {
+    // Check if there's already a lesson in this cell
+    final existingLesson = _planData.where((d) => 
+      d.dayIndex == data.dayIndex && 
+      d.periodIndex == data.periodIndex && 
+      d.isLesson
+    ).toList();
+
+    final hasExistingLesson = existingLesson.isNotEmpty;
+    final buttonText = hasExistingLesson ? 'Add Another Lesson' : 'Add Lesson';
+    final icon = hasExistingLesson ? Icons.add : Icons.add_circle_outline;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -917,17 +928,18 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
-                  Icons.add_circle_outline,
+                  icon,
                   size: 20,
                   color: _dayColors[dayIndex].withValues(alpha: 0.4),
                 ),
                 SizedBox(height: 4),
                 Text(
-                  'Add Lesson',
+                  buttonText,
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: 8,
                     color: _dayColors[dayIndex].withValues(alpha: 0.6),
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
@@ -940,6 +952,13 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
   void _moveLesson(WeeklyPlanData data, int newDayIndex, int newPeriodIndex) {
     try {
       setState(() {
+        // Check if this is a full-week event
+        if (data.isFullWeekEvent) {
+          // Move the entire row of full-week events
+          _moveFullWeekEventRow(data.periodIndex, newPeriodIndex);
+          return;
+        }
+
         // Remove the lesson from its current position
         _planData.removeWhere((d) => d.lessonId == data.lessonId);
 
@@ -1382,9 +1401,44 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
 
   void _deleteLessonFromMultipleCell(int dayIndex, int periodIndex, int lessonIndex) {
     setState(() {
-      _planData.removeAt(lessonIndex);
+      // Find the cell with multiple lessons
+      final cellData = _planData.where((d) => 
+        d.dayIndex == dayIndex && 
+        d.periodIndex == periodIndex && 
+        d.subLessons.isNotEmpty
+      ).toList();
+
+      if (cellData.isNotEmpty) {
+        final cell = cellData.first;
+        final updatedSubLessons = List<WeeklyPlanData>.from(cell.subLessons);
+        
+        // Remove the specific lesson
+        if (lessonIndex < updatedSubLessons.length) {
+          updatedSubLessons.removeAt(lessonIndex);
+        }
+
+        // Update the cell
+        _planData.remove(cell);
+        
+        if (updatedSubLessons.isEmpty) {
+          // If no lessons left, create empty cell
+          _planData.add(WeeklyPlanData(
+            dayIndex: dayIndex,
+            periodIndex: periodIndex,
+            date: widget.weekStartDate?.add(Duration(days: dayIndex)),
+          ));
+        } else if (updatedSubLessons.length == 1) {
+          // If only one lesson left, make it the main lesson
+          _planData.add(updatedSubLessons.first);
+        } else {
+          // Keep multiple lessons
+          _planData.add(cell.copyWith(subLessons: updatedSubLessons));
+        }
+      }
     });
-    // No need to save immediately, as the cell will be rebuilt
+    
+    // Save the updated data
+    _saveWeekData();
   }
 
   void _deleteLesson(WeeklyPlanData data) {
