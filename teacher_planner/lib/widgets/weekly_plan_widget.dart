@@ -14,7 +14,7 @@ class WeeklyPlanWidget extends StatefulWidget {
     required this.periods,
     this.initialData,
     required this.isVerticalLayout,
-    this.onDayTap, // Add navigation callback
+    this.onDayTap, 
     this.weekStartDate, // Add date for term planner integration
     this.onAddFullWeekEvent, // Add full week event callback
   }) : super(key: key);
@@ -134,14 +134,11 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
           ],
         ),
       ),
-      child: widget.isVerticalLayout ? _buildVerticalLayout(isTablet) : _buildHorizontalLayout(isTablet),
+      child: widget.isVerticalLayout ? _buildVerticalLayout(theme, isTablet, screenSize) : _buildHorizontalLayout(theme, isTablet, screenSize),
     );
   }
 
-  Widget _buildVerticalLayout(bool isTablet) {
-    final theme = Theme.of(context);
-    final screenSize = MediaQuery.of(context).size;
-    
+  Widget _buildVerticalLayout(ThemeData theme, bool isTablet, Size screenSize) {
     // Responsive sizing - full screen with better handling for 6-8 periods
     final headerHeight = isTablet ? 80.0 : 60.0;
     final availableHeight = screenSize.height - headerHeight - 120; // Account for padding and spacing
@@ -199,7 +196,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                     ),
                   ),
                 ),
-                // Day columns with enhanced colors - only headers
+                // Day columns with enhanced colors - clickable for navigation
                 ...List.generate(5, (dayIndex) => Expanded(
                   child: GestureDetector(
                     onTap: () => widget.onDayTap?.call(dayIndex),
@@ -217,7 +214,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                               _dayColors[dayIndex].withValues(alpha: 0.8),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(16), // All headers rounded
+                          borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
                               color: _dayColors[dayIndex].withValues(alpha: 0.3),
@@ -284,9 +281,9 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
           // Period rows with gaps for full-week events - full screen
           Expanded(
             child: ListView.builder(
-              itemCount: widget.periods * 2 - 1, // Double the count minus 1 for gaps
+              itemCount: widget.periods * 2 - 1, // Double the count minus 1 for gaps between periods
               itemBuilder: (context, index) {
-                final isGap = index % 2 == 1; // Odd indices are gaps
+                final isGap = index % 2 == 1; // Odd indices are gaps for full week events
                 final periodIndex = index ~/ 2; // Integer division to get period index
                 
                 if (isGap) {
@@ -363,14 +360,11 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
     );
   }
 
-  Widget _buildHorizontalLayout(bool isTablet) {
-    final theme = Theme.of(context);
-    final screenSize = MediaQuery.of(context).size;
-    
+  Widget _buildHorizontalLayout(ThemeData theme, bool isTablet, Size screenSize) {
     // Responsive sizing - full screen with better handling for 6-8 periods
     final headerHeight = isTablet ? 80.0 : 60.0;
     final availableHeight = screenSize.height - headerHeight - 120; // Account for padding and spacing
-    final cellHeight = availableHeight / 5; // Full height distribution for 5 days
+    final cellHeight = availableHeight / 5; // 5 days
     final dayLabelWidth = isTablet ? 140.0 : 120.0;
     final fontSize = isTablet ? 18.0 : 16.0;
     final smallFontSize = isTablet ? 14.0 : 12.0;
@@ -381,18 +375,12 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
       padding: EdgeInsets.all(isTablet ? 32.0 : 20.0),
       child: Column(
         children: [
-          // Period headers with enhanced styling
+          // Period headers with enhanced styling (periods run horizontally)
           Container(
             height: headerHeight,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ],
+              // Remove shadows completely
             ),
             child: Row(
               children: [
@@ -424,67 +412,75 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                     ),
                   ),
                 ),
-                // Period columns with enhanced styling
-                ...List.generate(widget.periods, (periodIndex) => Expanded(
-                  child: Container(
-                    height: headerHeight,
-                    margin: EdgeInsets.only(left: 2),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          theme.primaryColor.withOpacity(0.3),
-                          theme.primaryColor.withOpacity(0.1),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(periodIndex == widget.periods - 1 ? 16 : 0),
-                      boxShadow: [
-                        BoxShadow(
-                          color: theme.primaryColor.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Period ${periodIndex + 1}',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: theme.primaryColor.withOpacity(0.8),
-                          fontSize: fontSize,
-                          shadows: [
-                            Shadow(
-                              color: Colors.white.withOpacity(0.8),
-                              offset: Offset(0, 1),
-                              blurRadius: 2,
-                            ),
+                // Period columns with gaps for full week events
+                ...List.generate(widget.periods * 2 - 1, (index) {
+                  final isGap = index % 2 == 1; // Odd indices are gaps for full week events
+                  final periodIndex = index ~/ 2; // Integer division to get period index
+                  
+                  if (isGap) {
+                    // Gap between periods for full week events (no text)
+                    return Container(
+                      width: 40, // Width for full week event gap
+                      height: headerHeight,
+                      margin: EdgeInsets.only(left: 2),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Colors.orange.withOpacity(0.1),
+                            Colors.orange.withOpacity(0.05),
                           ],
                         ),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                    ),
-                  ),
-                )),
+                      // Remove the "Events" text completely
+                    );
+                  } else {
+                    // Regular period column
+                    return Expanded(
+                      child: Container(
+                        height: headerHeight,
+                        margin: EdgeInsets.only(left: 2),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              theme.primaryColor.withOpacity(0.3),
+                              theme.primaryColor.withOpacity(0.1),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(periodIndex == widget.periods - 1 ? 16 : 8),
+                          // Remove all shadows
+                        ),
+                        child: Center(
+                          child: Text(
+                            'P${periodIndex + 1}',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: theme.primaryColor.withOpacity(0.8),
+                              fontSize: fontSize - 2
+                              
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                }),
               ],
             ),
           ),
           
           SizedBox(height: 20),
           
-          // Day rows with gaps for full-week events - full screen
+          // Day rows (days run vertically)
           Expanded(
             child: ListView.builder(
-              itemCount: 5 * 2 - 1, // Double the count minus 1 for gaps
-              itemBuilder: (context, index) {
-                final isGap = index % 2 == 1; // Odd indices are gaps
-                final dayIndex = index ~/ 2; // Integer division to get day index
-                
-                if (isGap) {
-                  return _buildFullWeekEventDayGap(dayIndex, theme, isTablet, dayLabelWidth, smallFontSize);
-                } else {
-                  return _buildDayRow(dayIndex, theme, isTablet, cellHeight, dayLabelWidth, smallFontSize);
-                }
+              itemCount: 5, // 5 days
+              itemBuilder: (context, dayIndex) {
+                return _buildDayRowWithPeriodGaps(dayIndex, theme, isTablet, cellHeight, dayLabelWidth, smallFontSize);
               },
             ),
           ),
@@ -493,7 +489,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
     );
   }
 
-  Widget _buildDayRow(int dayIndex, ThemeData theme, bool isTablet, double cellHeight, double dayLabelWidth, double smallFontSize) {
+  Widget _buildDayRowWithPeriodGaps(int dayIndex, ThemeData theme, bool isTablet, double cellHeight, double dayLabelWidth, double smallFontSize) {
     return Container(
       margin: EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -546,7 +542,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        fontSize: smallFontSize,
+                        fontSize: smallFontSize + 2,
                         shadows: [
                           Shadow(
                             color: Colors.black.withOpacity(0.2),
@@ -578,7 +574,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                     Icon(
                       Icons.arrow_forward_ios,
                       color: Colors.white.withOpacity(0.7),
-                      size: 10,
+                      size: 12,
                     ),
                   ],
                 ),
@@ -586,22 +582,464 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
             ),
           ),
           
-          // Period cells with color strips and drag/drop functionality
-          ...List.generate(widget.periods, (periodIndex) => Expanded(
-            child: Container(
-              height: cellHeight,
-              margin: EdgeInsets.only(left: 4, right: 4), // Add gaps between periods
-              child: _buildDraggableCell(dayIndex, periodIndex, theme, cellHeight),
-            ),
-          )),
+          // Period cells with gaps for full week events
+          ...List.generate(widget.periods * 2 - 1, (index) {
+            final isGap = index % 2 == 1; // Odd indices are gaps for full week events
+            final periodIndex = index ~/ 2; // Integer division to get period index
+            
+            if (isGap) {
+              // Gap between periods for full week events
+              return Container(
+                width: 40, // Width for full week event gap
+                height: cellHeight,
+                margin: EdgeInsets.only(left: 2, right: 2),
+                child: _buildFullWeekEventGapCell(dayIndex, periodIndex, theme, cellHeight),
+              );
+            } else {
+              // Regular period cell
+              return Expanded(
+                child: Container(
+                  height: cellHeight,
+                  margin: EdgeInsets.only(left: 2, right: 2),
+                  child: _buildDraggableCell(dayIndex, periodIndex, theme, cellHeight),
+                ),
+              );
+            }
+          }),
         ],
       ),
     );
   }
 
-  void _editPlanCell(WeeklyPlanData data) {
-    // TODO: Implement lesson editing dialog
-    print('Edit cell: ${data.dayIndex}, ${data.periodIndex}');
+  Widget _buildFullWeekEventGapCell(int dayIndex, int periodIndex, ThemeData theme, double cellHeight) {
+    // Check if there's a full week event for this period and day
+    final fullWeekEvent = _planData.where((d) => 
+      d.dayIndex == dayIndex && d.periodIndex == periodIndex && d.isFullWeekEvent
+    ).firstOrNull;
+
+    return DragTarget<WeeklyPlanData>(
+      onWillAcceptWithDetails: (details) {
+        final draggedData = details.data;
+        // Only accept full-week events, reject regular lessons
+        return draggedData.isFullWeekEvent;
+      },
+      onAcceptWithDetails: (details) {
+        final draggedData = details.data;
+        // Move the full-week event to this gap
+        _moveFullWeekEventToGap(draggedData.dayIndex, draggedData.periodIndex, dayIndex, periodIndex);
+      },
+      builder: (context, candidateData, rejectedData) {
+        return Container(
+          
+          child: fullWeekEvent != null 
+            ? _buildFullWeekEventInHorizontalGap(fullWeekEvent, theme)
+            : Container(
+                // Empty gap - completely transparent
+                decoration: BoxDecoration(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFullWeekEventInHorizontalGap(WeeklyPlanData event, ThemeData theme) {
+    return Draggable<WeeklyPlanData>(
+      data: event,
+      feedback: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 80,
+          height: 60,
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.3),
+                blurRadius: 6,
+                offset: Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Center(
+            child: RotatedBox(
+              quarterTurns: 3, // Rotate text 90 degrees counterclockwise (vertical)
+              child: Text(
+                event.subject.isNotEmpty ? event.subject : 'Event',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _editFullWeekEvent(event),
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.orange.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: Stack(
+              children: [
+                Center(
+                  child: RotatedBox(
+                    quarterTurns: 3, // Rotate text 90 degrees counterclockwise (vertical)
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          event.subject.isNotEmpty ? event.subject : 'Event',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange.withValues(alpha: 0.9),
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (event.notes.isNotEmpty) ...[
+                          SizedBox(height: 2),
+                          Text(
+                            event.notes.length > 10 
+                              ? '${event.notes.substring(0, 8)}...' 
+                              : event.notes,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 7,
+                              color: Colors.orange.withValues(alpha: 0.7),
+                              fontStyle: FontStyle.italic,
+                            ),
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 2,
+                  right: 2,
+                  child: GestureDetector(
+                    onTap: () => _deleteFullWeekEventDay(event.dayIndex, event.periodIndex),
+                    child: Icon(
+                      Icons.close,
+                      size: 10,
+                      color: Colors.red.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _moveFullWeekEventToGap(int currentDayIndex, int currentPeriodIndex, int newDayIndex, int newPeriodIndex) {
+    try {
+      setState(() {
+        // Find ALL full-week events for the current period (entire row)
+        final fullWeekEvents = _planData.where((d) => 
+          d.periodIndex == currentPeriodIndex && d.isFullWeekEvent
+        ).toList();
+
+        if (fullWeekEvents.isEmpty) {
+          debugPrint('No full-week events found for period $currentPeriodIndex');
+          return;
+        }
+
+        // Remove all existing full-week events from the target period
+        _planData.removeWhere((d) => 
+          d.periodIndex == newPeriodIndex && d.isFullWeekEvent
+        );
+
+        // Remove all full-week events from the current period
+        _planData.removeWhere((d) => 
+          d.periodIndex == currentPeriodIndex && d.isFullWeekEvent
+        );
+
+        // Move the entire row to the new period
+        for (final event in fullWeekEvents) {
+          _planData.add(event.copyWith(
+            periodIndex: newPeriodIndex,
+            lessonId: _nextLessonId.toString(),
+            date: widget.weekStartDate?.add(Duration(days: event.dayIndex)),
+          ));
+          _nextLessonId++;
+        }
+      });
+      
+      // Save the updated data
+      _saveWeekData();
+      debugPrint('Successfully moved entire full-week event row from period $currentPeriodIndex to period $newPeriodIndex');
+    } catch (e) {
+      debugPrint('Error moving full week event row: $e');
+    }
+  }
+
+  String _getDateString(int dayIndex) {
+    if (widget.weekStartDate == null) {
+      return '';
+    }
+    final date = widget.weekStartDate!.add(Duration(days: dayIndex));
+    
+    // Format: "24/7" for day/month
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    
+    return '$day/$month';
+  }
+
+  Widget _buildCellContent(WeeklyPlanData data, ThemeData theme, int dayIndex) {
+    // Don't show full-week events in the main lesson cells
+    if (data.isFullWeekEvent) {
+      return _buildEmptyCell(data, theme, dayIndex);
+    }
+    
+    if (data.isLesson) {
+      return _buildDraggableLesson(data, theme);
+    } else if (data.subLessons.isNotEmpty) {
+      return _buildMultipleLessonsCell(data, theme);
+    } else {
+      return _buildEmptyCell(data, theme, dayIndex);
+    }
+  }
+
+  void _deleteLessonFromMultipleCell(int dayIndex, int periodIndex, int lessonIndex) {
+    setState(() {
+      // Find the cell with multiple lessons
+      final cellData = _planData.where((d) => 
+        d.dayIndex == dayIndex && 
+        d.periodIndex == periodIndex && 
+        d.subLessons.isNotEmpty
+      ).toList();
+
+      if (cellData.isNotEmpty) {
+        final cell = cellData.first;
+        final updatedSubLessons = List<WeeklyPlanData>.from(cell.subLessons);
+        
+        // Remove the specific lesson
+        if (lessonIndex < updatedSubLessons.length) {
+          updatedSubLessons.removeAt(lessonIndex);
+        }
+
+        // Update the cell
+        _planData.remove(cell);
+        
+        if (updatedSubLessons.isEmpty) {
+          // If no lessons left, create empty cell
+          _planData.add(WeeklyPlanData(
+            dayIndex: dayIndex,
+            periodIndex: periodIndex,
+            date: widget.weekStartDate?.add(Duration(days: dayIndex)),
+          ));
+        } else if (updatedSubLessons.length == 1) {
+          // If only one lesson left, make it the main lesson
+          _planData.add(updatedSubLessons.first);
+        } else {
+          // Keep multiple lessons
+          _planData.add(cell.copyWith(subLessons: updatedSubLessons));
+        }
+      }
+    });
+    
+    // Save the updated data
+    _saveWeekData();
+  }
+
+  void _deleteLesson(WeeklyPlanData data) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Lesson'),
+        content: Text('Are you sure you want to delete this lesson? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _planData.remove(data);
+              });
+              // No need to save immediately, as the cell will be rebuilt
+              Navigator.pop(context);
+            },
+            child: Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFullWeekEventGap(int periodIndex, ThemeData theme, bool isTablet, double periodLabelWidth, double smallFontSize) {
+    // Check if there are full-week events for this period
+    final fullWeekEvents = _planData.where((d) => 
+      d.periodIndex == periodIndex && d.isFullWeekEvent
+    ).toList();
+
+    if (fullWeekEvents.isEmpty) {
+      // Show a gap even if empty - for drag and drop target
+      return Container(
+        height: 40, // Same height as horizontal gaps
+        margin: EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            // Empty space for period label
+            Container(
+              width: periodLabelWidth,
+              height: 40,
+            ),
+            // Full-week event drop zones
+            ...List.generate(5, (dayIndex) {
+              return Expanded(
+                child: Container(
+                  height: 40,
+                  margin: EdgeInsets.only(left: 3, right: 3),
+                  child: DragTarget<WeeklyPlanData>(
+                    onWillAcceptWithDetails: (details) {
+                      final draggedData = details.data;
+                      // Only accept full-week events, reject regular lessons
+                      return draggedData.isFullWeekEvent;
+                    },
+                    onAcceptWithDetails: (details) {
+                      final draggedData = details.data;
+                      // Move the full-week event to this gap
+                      _moveFullWeekEventToVerticalGap(draggedData.dayIndex, draggedData.periodIndex, dayIndex, periodIndex);
+                    },
+                    builder: (context, candidateData, rejectedData) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          // No shading when dragging over - just a subtle border
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: candidateData.isNotEmpty 
+                            ? Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1)
+                            : null,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      );
+    }
+
+    // Show full-week events in the gap
+    return Container(
+      height: 40, 
+      margin: EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          // Empty space for period label
+          Container(
+            width: periodLabelWidth,
+            height: 40,
+          ),
+          // Full-week event cells with drag targets
+          ...List.generate(5, (dayIndex) {
+            final event = fullWeekEvents.where((e) => e.dayIndex == dayIndex).firstOrNull;
+            return Expanded(
+              child: Container(
+                height: 40,
+                margin: EdgeInsets.only(left: 3, right: 3),
+                child: DragTarget<WeeklyPlanData>(
+                  onWillAcceptWithDetails: (details) {
+                    final draggedData = details.data;
+                    // Only accept full-week events, reject regular lessons
+                    return draggedData.isFullWeekEvent;
+                  },
+                  onAcceptWithDetails: (details) {
+                    final draggedData = details.data;
+                    // Move the full-week event to this gap
+                    _moveFullWeekEventToVerticalGap(draggedData.dayIndex, draggedData.periodIndex, dayIndex, periodIndex);
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        // No shading when dragging over - just a subtle border
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: candidateData.isNotEmpty 
+                          ? Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1)
+                          : null,
+                      ),
+                      child: event != null ? _buildFullWeekEventInGap(event, theme) : Container(),
+                    );
+                  },
+                ),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  void _moveFullWeekEventToVerticalGap(int currentDayIndex, int currentPeriodIndex, int newDayIndex, int newPeriodIndex) {
+    try {
+      setState(() {
+        // Find ALL full-week events for the current period (entire row)
+        final fullWeekEvents = _planData.where((d) => 
+          d.periodIndex == currentPeriodIndex && d.isFullWeekEvent
+        ).toList();
+
+        if (fullWeekEvents.isEmpty) {
+          debugPrint('No full-week events found for period $currentPeriodIndex');
+          return;
+        }
+
+        // Remove all existing full-week events from the target period
+        _planData.removeWhere((d) => 
+          d.periodIndex == newPeriodIndex && d.isFullWeekEvent
+        );
+
+        // Remove all full-week events from the current period
+        _planData.removeWhere((d) => 
+          d.periodIndex == currentPeriodIndex && d.isFullWeekEvent
+        );
+
+        // Move the entire row to the new period
+        for (final event in fullWeekEvents) {
+          _planData.add(event.copyWith(
+            periodIndex: newPeriodIndex,
+            lessonId: _nextLessonId.toString(),
+            date: widget.weekStartDate?.add(Duration(days: event.dayIndex)),
+          ));
+          _nextLessonId++;
+        }
+      });
+      
+      // Save the updated data
+      _saveWeekData();
+      debugPrint('Successfully moved entire full-week event row from period $currentPeriodIndex to period $newPeriodIndex in vertical gap');
+    } catch (e) {
+      debugPrint('Error moving full week event row to vertical gap: $e');
+    }
   }
 
   Widget _buildDraggableCell(int dayIndex, int periodIndex, ThemeData theme, double cellHeight) {
@@ -622,9 +1060,9 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
           return false;
         }
         
-        // For full-week events, only accept drops on the same day (to move the entire row)
+        // Reject full-week events - they should only go in gaps
         if (draggedData.isFullWeekEvent) {
-          return draggedData.dayIndex == dayIndex;
+          return false;
         }
         
         return true;
@@ -645,7 +1083,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
             border: Border.all(
               color: candidateData.isNotEmpty 
                 ? (isDraggingFullWeekEvent 
-                    ? Colors.blue.withValues(alpha: 0.6)  // Blue for full-week events
+                    ? Colors.red.withValues(alpha: 0.3)  // Red to indicate invalid drop for full-week events
                     : _dayColors[dayIndex].withValues(alpha: 0.5))
                 : Colors.grey.shade200,
               width: candidateData.isNotEmpty ? 2 : 1,
@@ -682,6 +1120,100 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
     );
   }
 
+  void _saveWeekData() {
+    try {
+      // TODO: Save to database
+      // This will be implemented when we add database integration
+      debugPrint('Saving week data for week starting: ${widget.weekStartDate}');
+      debugPrint('Total lessons: ${_planData.where((d) => d.isLesson).length}');
+      
+      // Example of what will be saved:
+      for (final data in _planData.where((d) => d.isLesson)) {
+        debugPrint('Lesson: ${data.subject} on ${data.date} at period ${data.periodIndex + 1}');
+      }
+    } catch (e) {
+      debugPrint('Error saving week data: $e');
+      // In production, this would show a user-friendly error message
+      // and potentially retry the operation
+    }
+  }
+
+  void _deleteFullWeekEventDay(int dayIndex, int periodIndex) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete Event'),
+        content: Text('Are you sure you want to delete this event for ${_dayNames[dayIndex]}? Other days will remain unchanged.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                _planData.removeWhere((d) => 
+                  d.dayIndex == dayIndex && 
+                  d.periodIndex == periodIndex && 
+                  d.isFullWeekEvent
+                );
+              });
+              Navigator.pop(context);
+            },
+            child: Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyCell(WeeklyPlanData data, ThemeData theme, int dayIndex) {
+    // Check if there's already a lesson in this cell
+    final existingLesson = _planData.where((d) => 
+      d.dayIndex == data.dayIndex && 
+      d.periodIndex == data.periodIndex && 
+      d.isLesson
+    ).toList();
+
+    final hasExistingLesson = existingLesson.isNotEmpty;
+    final buttonText = hasExistingLesson ? 'Add Another Lesson' : 'Add Lesson';
+    final icon = hasExistingLesson ? Icons.add : Icons.add_circle_outline;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _addLesson(data),
+        borderRadius: BorderRadius.circular(12),
+        splashColor: _dayColors[dayIndex].withValues(alpha: 0.2),
+        highlightColor: _dayColors[dayIndex].withValues(alpha: 0.1),
+        child: Container(
+          padding: EdgeInsets.all(8),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 20,
+                  color: _dayColors[dayIndex].withValues(alpha: 0.4),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  buttonText,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontSize: 10,
+                    color: _dayColors[dayIndex].withValues(alpha: 0.6),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildDraggableLesson(WeeklyPlanData data, ThemeData theme) {
     // Check if this is a full-week event
     final isFullWeekEvent = data.isFullWeekEvent;
@@ -713,7 +1245,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 14, // Increased from default
+                    fontSize: 14,
                   ),
                 ),
                 if (data.isFullWeekEvent) ...[
@@ -722,7 +1254,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                     'Full Week Event',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 12, // Increased from 10
+                      fontSize: 12,
                     ),
                   ),
                 ],
@@ -773,7 +1305,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                             data.subject,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              fontSize: 13, // Increased from 11
+                              fontSize: 13,
                               color: Colors.white,
                             ),
                             maxLines: 1,
@@ -818,11 +1350,11 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                       child: Text(
                         data.content,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 11, // Increased from 9
+                          fontSize: 11,
                           color: Colors.black87,
                           height: 1.2,
                         ),
-                        maxLines: null, // Allow unlimited lines
+                        maxLines: null,
                         overflow: TextOverflow.visible,
                       ),
                     ),
@@ -840,7 +1372,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                     child: Text(
                       data.notes,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 10, // Increased from 8
+                        fontSize: 10,
                         fontStyle: FontStyle.italic,
                         color: _dayColors[data.dayIndex].withValues(alpha: 0.8),
                       ),
@@ -875,7 +1407,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
             'Multiple Lessons (${data.subLessons.length})',
             style: TextStyle(
               fontWeight: FontWeight.bold,
-              fontSize: 13, // Increased from 11
+              fontSize: 13,
               color: _dayColors[data.dayIndex].withValues(alpha: 0.9),
             ),
           ),
@@ -916,7 +1448,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                   lesson.subject.isNotEmpty ? lesson.subject : 'Lesson ${lessonIndex + 1}',
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontSize: 11, // Increased from 9
+                    fontSize: 11,
                     color: _dayColors[dayIndex].withValues(alpha: 0.9),
                   ),
                   maxLines: 1,
@@ -927,7 +1459,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                   Text(
                     lesson.content,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 10, // Increased from 8
+                      fontSize: 10,
                       color: Colors.black87,
                     ),
                     maxLines: 2,
@@ -948,53 +1480,6 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
             constraints: BoxConstraints(minWidth: 24, minHeight: 24),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyCell(WeeklyPlanData data, ThemeData theme, int dayIndex) {
-    // Check if there's already a lesson in this cell
-    final existingLesson = _planData.where((d) => 
-      d.dayIndex == data.dayIndex && 
-      d.periodIndex == data.periodIndex && 
-      d.isLesson
-    ).toList();
-
-    final hasExistingLesson = existingLesson.isNotEmpty;
-    final buttonText = hasExistingLesson ? 'Add Another Lesson' : 'Add Lesson';
-    final icon = hasExistingLesson ? Icons.add : Icons.add_circle_outline;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _addLesson(data),
-        borderRadius: BorderRadius.circular(12),
-        splashColor: _dayColors[dayIndex].withValues(alpha: 0.2),
-        highlightColor: _dayColors[dayIndex].withValues(alpha: 0.1),
-        child: Container(
-          padding: EdgeInsets.all(8),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: _dayColors[dayIndex].withValues(alpha: 0.4),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  buttonText,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    fontSize: 10, // Increased from 8
-                    color: _dayColors[dayIndex].withValues(alpha: 0.6),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -1050,6 +1535,71 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
       // In production, this would show a user-friendly error message
       // and potentially revert the move operation
     }
+  }
+
+  void _moveFullWeekEventRow(int currentPeriodIndex, int newPeriodIndex) {
+    try {
+      setState(() {
+        // Find all full-week events for the current period
+        final fullWeekEvents = _planData.where((d) => 
+          d.periodIndex == currentPeriodIndex && d.isFullWeekEvent
+        ).toList();
+
+        if (fullWeekEvents.isEmpty) {
+          debugPrint('No full-week events found for period $currentPeriodIndex');
+          return;
+        }
+
+        // Check if the target period has any existing data
+        final targetPeriodData = _planData.where((d) => 
+          d.periodIndex == newPeriodIndex
+        ).toList();
+
+        // Remove existing data from target period if any
+        for (final existingData in targetPeriodData) {
+          _planData.remove(existingData);
+        }
+
+        // Remove full-week events from current period
+        for (final event in fullWeekEvents) {
+          _planData.remove(event);
+        }
+
+        // Add full-week events to the new period
+        for (final event in fullWeekEvents) {
+          _planData.add(event.copyWith(
+            periodIndex: newPeriodIndex,
+            lessonId: _nextLessonId.toString(),
+          ));
+          _nextLessonId++;
+        }
+
+        // Create empty cells for the old period if needed
+        for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
+          final hasData = _planData.any((d) => 
+            d.dayIndex == dayIndex && d.periodIndex == currentPeriodIndex
+          );
+          if (!hasData) {
+            _planData.add(WeeklyPlanData(
+              dayIndex: dayIndex,
+              periodIndex: currentPeriodIndex,
+              date: widget.weekStartDate?.add(Duration(days: dayIndex)),
+            ));
+          }
+        }
+      });
+      
+      // Save the updated data
+      _saveWeekData();
+      debugPrint('Successfully moved full-week event row from period $currentPeriodIndex to $newPeriodIndex');
+    } catch (e) {
+      debugPrint('Error moving full week event row: $e');
+    }
+  }
+
+  void _editPlanCell(WeeklyPlanData data) {
+    // TODO: Implement lesson editing dialog
+    print('Edit cell: ${data.dayIndex}, ${data.periodIndex}');
   }
 
   void _addLesson(WeeklyPlanData data) {
@@ -1210,24 +1760,6 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
     );
   }
 
-  void _saveWeekData() {
-    try {
-      // TODO: Save to database
-      // This will be implemented when we add database integration
-      debugPrint('Saving week data for week starting: ${widget.weekStartDate}');
-      debugPrint('Total lessons: ${_planData.where((d) => d.isLesson).length}');
-      
-      // Example of what will be saved:
-      for (final data in _planData.where((d) => d.isLesson)) {
-        debugPrint('Lesson: ${data.subject} on ${data.date} at period ${data.periodIndex + 1}');
-      }
-    } catch (e) {
-      debugPrint('Error saving week data: $e');
-      // In production, this would show a user-friendly error message
-      // and potentially retry the operation
-    }
-  }
-
   void addFullWeekEvent() {
     String subject = '';
     String content = '';
@@ -1345,7 +1877,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                         content: content.trim(),
                         notes: notes.trim(),
                         lessonId: _nextLessonId.toString(),
-                        isLesson: true,
+                        isLesson: false, // Full week events are NOT lessons
                         isFullWeekEvent: true,
                         date: widget.weekStartDate?.add(Duration(days: dayIndex)),
                       ));
@@ -1380,550 +1912,6 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
         ],
       ),
     );
-  }
-
-  void _deleteFullWeekEventDay(int dayIndex, int periodIndex) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete Event'),
-        content: Text('Are you sure you want to delete this event for ${_dayNames[dayIndex]}? Other days will remain unchanged.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _planData.removeWhere((d) => 
-                  d.dayIndex == dayIndex && 
-                  d.periodIndex == periodIndex && 
-                  d.isFullWeekEvent
-                );
-              });
-              Navigator.pop(context);
-            },
-            child: Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _moveFullWeekEventRow(int currentPeriodIndex, int newPeriodIndex) {
-    try {
-      setState(() {
-        // Find all full-week events for the current period
-        final fullWeekEvents = _planData.where((d) => 
-          d.periodIndex == currentPeriodIndex && d.isFullWeekEvent
-        ).toList();
-
-        if (fullWeekEvents.isEmpty) {
-          debugPrint('No full-week events found for period $currentPeriodIndex');
-          return;
-        }
-
-        // Check if the target period has any existing data
-        final targetPeriodData = _planData.where((d) => 
-          d.periodIndex == newPeriodIndex
-        ).toList();
-
-        // Remove existing data from target period if any
-        for (final existingData in targetPeriodData) {
-          _planData.remove(existingData);
-        }
-
-        // Remove full-week events from current period
-        for (final event in fullWeekEvents) {
-          _planData.remove(event);
-        }
-
-        // Add full-week events to the new period
-        for (final event in fullWeekEvents) {
-          _planData.add(event.copyWith(
-            periodIndex: newPeriodIndex,
-            lessonId: _nextLessonId.toString(),
-          ));
-          _nextLessonId++;
-        }
-
-        // Create empty cells for the old period if needed
-        for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
-          final hasData = _planData.any((d) => 
-            d.dayIndex == dayIndex && d.periodIndex == currentPeriodIndex
-          );
-          if (!hasData) {
-            _planData.add(WeeklyPlanData(
-              dayIndex: dayIndex,
-              periodIndex: currentPeriodIndex,
-              date: widget.weekStartDate?.add(Duration(days: dayIndex)),
-            ));
-          }
-        }
-      });
-      
-      // Save the updated data
-      _saveWeekData();
-      debugPrint('Successfully moved full-week event row from period $currentPeriodIndex to $newPeriodIndex');
-    } catch (e) {
-      debugPrint('Error moving full week event row: $e');
-    }
-  }
-
-  String _getDateString(int dayIndex) {
-    if (widget.weekStartDate == null) {
-      return '';
-    }
-    final date = widget.weekStartDate!.add(Duration(days: dayIndex));
-    
-    // Format: "24/7" for day/month
-    final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
-    
-    return '$day/$month';
-  }
-
-  Widget _buildCellContent(WeeklyPlanData data, ThemeData theme, int dayIndex) {
-    // Don't show full-week events in the main lesson cells
-    if (data.isFullWeekEvent) {
-      return _buildEmptyCell(data, theme, dayIndex);
-    }
-    
-    if (data.isLesson) {
-      return _buildDraggableLesson(data, theme);
-    } else if (data.subLessons.isNotEmpty) {
-      return _buildMultipleLessonsCell(data, theme);
-    } else {
-      return _buildEmptyCell(data, theme, dayIndex);
-    }
-  }
-
-  void _deleteLessonFromMultipleCell(int dayIndex, int periodIndex, int lessonIndex) {
-    setState(() {
-      // Find the cell with multiple lessons
-      final cellData = _planData.where((d) => 
-        d.dayIndex == dayIndex && 
-        d.periodIndex == periodIndex && 
-        d.subLessons.isNotEmpty
-      ).toList();
-
-      if (cellData.isNotEmpty) {
-        final cell = cellData.first;
-        final updatedSubLessons = List<WeeklyPlanData>.from(cell.subLessons);
-        
-        // Remove the specific lesson
-        if (lessonIndex < updatedSubLessons.length) {
-          updatedSubLessons.removeAt(lessonIndex);
-        }
-
-        // Update the cell
-        _planData.remove(cell);
-        
-        if (updatedSubLessons.isEmpty) {
-          // If no lessons left, create empty cell
-          _planData.add(WeeklyPlanData(
-            dayIndex: dayIndex,
-            periodIndex: periodIndex,
-            date: widget.weekStartDate?.add(Duration(days: dayIndex)),
-          ));
-        } else if (updatedSubLessons.length == 1) {
-          // If only one lesson left, make it the main lesson
-          _planData.add(updatedSubLessons.first);
-        } else {
-          // Keep multiple lessons
-          _planData.add(cell.copyWith(subLessons: updatedSubLessons));
-        }
-      }
-    });
-    
-    // Save the updated data
-    _saveWeekData();
-  }
-
-  void _deleteLesson(WeeklyPlanData data) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Delete Lesson'),
-        content: Text('Are you sure you want to delete this lesson? This action cannot be undone.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _planData.remove(data);
-              });
-              // No need to save immediately, as the cell will be rebuilt
-              Navigator.pop(context);
-            },
-            child: Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFullWeekEventGap(int periodIndex, ThemeData theme, bool isTablet, double periodLabelWidth, double smallFontSize) {
-    // Check if there are full-week events for this period
-    final fullWeekEvents = _planData.where((d) => 
-      d.periodIndex == periodIndex && d.isFullWeekEvent
-    ).toList();
-
-    if (fullWeekEvents.isEmpty) {
-      // No full-week events, just show a small gap
-      return Container(
-        height: 8, // Small gap between periods
-        margin: EdgeInsets.only(bottom: 8),
-      );
-    }
-
-    // Show full-week events in the gap
-    return Container(
-      height: 40, // Height for full-week events
-      margin: EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          // Empty space for period label
-          Container(
-            width: periodLabelWidth,
-            height: 40,
-          ),
-          // Full-week event cells with drag targets
-          ...List.generate(5, (dayIndex) {
-            final event = fullWeekEvents.where((e) => e.dayIndex == dayIndex).firstOrNull;
-            return Expanded(
-              child: Container(
-                height: 40,
-                margin: EdgeInsets.only(left: 4, right: 4),
-                child: DragTarget<WeeklyPlanData>(
-                  onWillAcceptWithDetails: (details) {
-                    final draggedData = details.data;
-                    // Only accept full-week events, reject regular lessons
-                    return draggedData.isFullWeekEvent;
-                  },
-                  onAcceptWithDetails: (details) {
-                    final draggedData = details.data;
-                    // Move the full-week event to this new period
-                    _moveFullWeekEventRow(draggedData.periodIndex, periodIndex);
-                  },
-                  builder: (context, candidateData, rejectedData) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: candidateData.isNotEmpty 
-                          ? Colors.blue.withValues(alpha: 0.1)  // Blue highlight for valid drop
-                          : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: candidateData.isNotEmpty 
-                          ? Border.all(color: Colors.blue.withValues(alpha: 0.3), width: 2)
-                          : null,
-                      ),
-                      child: event != null ? _buildFullWeekEventInGap(event, theme) : Container(),
-                    );
-                  },
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFullWeekEventInGap(WeeklyPlanData event, ThemeData theme) {
-    return Draggable<WeeklyPlanData>(
-      data: event,
-      feedback: Material(
-        color: Colors.transparent,
-        child: Container(
-          width: 150,
-          height: 30,
-          decoration: BoxDecoration(
-            color: _dayColors[event.dayIndex].withValues(alpha: 0.9),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.3),
-                blurRadius: 8,
-                offset: Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              event.subject.isNotEmpty ? event.subject : 'Event',
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontSize: 12, // Increased from 10
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ),
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _editFullWeekEvent(event),
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: _dayColors[event.dayIndex].withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: _dayColors[event.dayIndex].withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Stack(
-              children: [
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      event.subject.isNotEmpty ? event.subject : 'Event',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 12, // Increased from 10
-                        fontWeight: FontWeight.bold,
-                        color: _dayColors[event.dayIndex].withValues(alpha: 0.8),
-                      ),
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (event.notes.isNotEmpty) ...[
-                      SizedBox(height: 2),
-                      Text(
-                        event.notes.length > 50 
-                          ? '${event.notes.substring(0, 47)}...' 
-                          : event.notes,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontSize: 10, // Increased from 8
-                          color: _dayColors[event.dayIndex].withValues(alpha: 0.6),
-                          fontStyle: FontStyle.italic,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ],
-                ),
-                Positioned(
-                  top: 2,
-                  right: 2,
-                  child: GestureDetector(
-                    onTap: () => _deleteFullWeekEventDay(event.dayIndex, event.periodIndex),
-                    child: Icon(
-                      Icons.close,
-                      size: 12,
-                      color: Colors.red.withValues(alpha: 0.7),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFullWeekEventDayGap(int dayIndex, ThemeData theme, bool isTablet, double dayLabelWidth, double smallFontSize) {
-    // Check if there are full-week events for this day
-    final fullWeekEvents = _planData.where((d) => 
-      d.dayIndex == dayIndex && d.isFullWeekEvent
-    ).toList();
-
-    if (fullWeekEvents.isEmpty) {
-      // No full-week events for this day, just show a small gap
-      return Container(
-        height: 8, // Small gap between day rows
-        margin: EdgeInsets.only(bottom: 8),
-      );
-    }
-
-    // Show full-week events in the gap
-    return Container(
-      height: 40, // Height for full-week events
-      margin: EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          // Empty space for day label
-          Container(
-            width: dayLabelWidth,
-            height: 40,
-          ),
-          // Full-week event cells with drag targets
-          ...List.generate(widget.periods, (periodIndex) {
-            final event = fullWeekEvents.where((e) => e.periodIndex == periodIndex).firstOrNull;
-            return Expanded(
-              child: Container(
-                height: 40,
-                margin: EdgeInsets.only(left: 4, right: 4),
-                child: DragTarget<WeeklyPlanData>(
-                  onWillAcceptWithDetails: (details) {
-                    final draggedData = details.data;
-                    // Only accept full-week events, reject regular lessons
-                    return draggedData.isFullWeekEvent;
-                  },
-                  onAcceptWithDetails: (details) {
-                    final draggedData = details.data;
-                    // Move the full-week event to this new day
-                    _moveFullWeekEventToDay(draggedData.dayIndex, dayIndex);
-                  },
-                  builder: (context, candidateData, rejectedData) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: candidateData.isNotEmpty 
-                          ? Colors.blue.withValues(alpha: 0.1)  // Blue highlight for valid drop
-                          : Colors.transparent,
-                        borderRadius: BorderRadius.circular(8),
-                        border: candidateData.isNotEmpty 
-                          ? Border.all(color: Colors.blue.withValues(alpha: 0.3), width: 2)
-                          : null,
-                      ),
-                      child: event != null ? _buildFullWeekEventInGap(event, theme) : Container(),
-                    );
-                  },
-                ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFullWeekEventDayRow(int dayIndex, ThemeData theme, bool isTablet, double cellHeight, double dayLabelWidth, double smallFontSize) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          // Day name with enhanced styling for full-week events
-          Container(
-            width: dayLabelWidth,
-            height: cellHeight,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  _dayColors[dayIndex].withValues(alpha: 0.7),
-                  _dayColors[dayIndex].withValues(alpha: 0.5),
-                ],
-              ),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-              ),
-              border: Border.all(
-                color: _dayColors[dayIndex].withValues(alpha: 0.3),
-                width: 1,
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Events',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    fontSize: smallFontSize - 2,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.2),
-                        offset: Offset(0, 1),
-                        blurRadius: 2,
-                      ),
-                    ],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 2),
-                Text(
-                  _dayNames[dayIndex],
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: smallFontSize - 4,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black.withOpacity(0.2),
-                        offset: Offset(0, 1),
-                        blurRadius: 2,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Period cells for full-week events
-          ...List.generate(widget.periods, (periodIndex) => Expanded(
-            child: Container(
-              height: cellHeight,
-              margin: EdgeInsets.only(left: 4, right: 4), // Add gaps between periods
-              child: _buildDraggableCell(dayIndex, periodIndex, theme, cellHeight),
-            ),
-          )),
-        ],
-      ),
-    );
-  }
-
-  void _moveFullWeekEventToDay(int currentDayIndex, int newDayIndex) {
-    try {
-      setState(() {
-        // Find all full-week events for the current day
-        final fullWeekEvents = _planData.where((d) => 
-          d.dayIndex == currentDayIndex && d.isFullWeekEvent
-        ).toList();
-
-        if (fullWeekEvents.isEmpty) {
-          debugPrint('No full-week events found for day $currentDayIndex');
-          return;
-        }
-
-        // Remove full-week events from current day
-        for (final event in fullWeekEvents) {
-          _planData.remove(event);
-        }
-
-        // Add full-week events to the new day
-        for (final event in fullWeekEvents) {
-          _planData.add(event.copyWith(
-            dayIndex: newDayIndex,
-            lessonId: _nextLessonId.toString(),
-          ));
-          _nextLessonId++;
-        }
-      });
-      
-      // Save the updated data
-      _saveWeekData();
-      debugPrint('Successfully moved full-week events from day $currentDayIndex to $newDayIndex');
-    } catch (e) {
-      debugPrint('Error moving full week events to day: $e');
-    }
   }
 
   void _editFullWeekEvent(WeeklyPlanData event) {
@@ -2041,6 +2029,108 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
             child: Text('Save Note'),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFullWeekEventInGap(WeeklyPlanData event, ThemeData theme) {
+    return Draggable<WeeklyPlanData>(
+      data: event,
+      feedback: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: 120,
+          height: 24,
+          decoration: BoxDecoration(
+            color: Colors.orange.withValues(alpha: 0.9),
+            borderRadius: BorderRadius.circular(6),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Center(
+            child: Text(
+              event.subject.isNotEmpty ? event.subject : 'Event',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontSize: 10,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _editFullWeekEvent(event),
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(
+                color: Colors.orange.withValues(alpha: 0.4),
+                width: 1,
+              ),
+            ),
+            child: Stack(
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      event.subject.isNotEmpty ? event.subject : 'Event',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.withValues(alpha: 0.9),
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (event.notes.isNotEmpty) ...[
+                      SizedBox(height: 1),
+                      Text(
+                        event.notes.length > 20 
+                          ? '${event.notes.substring(0, 17)}...' 
+                          : event.notes,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontSize: 8,
+                          color: Colors.orange.withValues(alpha: 0.7),
+                          fontStyle: FontStyle.italic,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+                Positioned(
+                  top: 1,
+                  right: 1,
+                  child: GestureDetector(
+                    onTap: () => _deleteFullWeekEventDay(event.dayIndex, event.periodIndex),
+                    child: Icon(
+                      Icons.close,
+                      size: 10,
+                      color: Colors.red.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

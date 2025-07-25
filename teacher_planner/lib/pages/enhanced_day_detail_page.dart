@@ -55,9 +55,13 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
 
     // Load lessons from weekly plan data for this specific day
     if (widget.weeklyPlanData != null) {
+      // Load regular lessons
       final dayLessons = widget.weeklyPlanData!.where((data) => 
         data.dayIndex == widget.dayIndex && data.isLesson
       ).toList();
+
+      // Sort by period index to maintain proper order
+      dayLessons.sort((a, b) => a.periodIndex.compareTo(b.periodIndex));
 
       for (final lesson in dayLessons) {
         // Convert WeeklyPlanData to EnhancedEventBlock
@@ -82,7 +86,11 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
 
         // Add sub-lessons if they exist
         if (lesson.subLessons.isNotEmpty) {
-          for (final subLesson in lesson.subLessons) {
+          // Sort sub-lessons by their period index as well
+          final sortedSubLessons = lesson.subLessons.toList();
+          sortedSubLessons.sort((a, b) => a.periodIndex.compareTo(b.periodIndex));
+          
+          for (final subLesson in sortedSubLessons) {
             lessons.add(EnhancedEventBlock(
               id: subLesson.lessonId.isNotEmpty ? subLesson.lessonId : UniqueKey().toString(),
               day: widget.day,
@@ -103,6 +111,36 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
             ));
           }
         }
+      }
+
+      // Also load full week events for this day
+      final fullWeekEvents = widget.weeklyPlanData!.where((data) => 
+        data.dayIndex == widget.dayIndex && data.isFullWeekEvent
+      ).toList();
+
+      // Sort full week events by period index too
+      fullWeekEvents.sort((a, b) => a.periodIndex.compareTo(b.periodIndex));
+
+      for (final fullWeekEvent in fullWeekEvents) {
+        lessons.add(EnhancedEventBlock(
+          id: fullWeekEvent.lessonId.isNotEmpty ? fullWeekEvent.lessonId : UniqueKey().toString(),
+          day: widget.day,
+          subject: fullWeekEvent.subject.isNotEmpty ? fullWeekEvent.subject : 'Event',
+          subtitle: '', // No subtitle for full week events - just the event name
+          body: fullWeekEvent.notes.isNotEmpty ? fullWeekEvent.notes : '',
+          color: Colors.orange.withOpacity(0.3), // Different color for full week events
+          startHour: 8 + fullWeekEvent.periodIndex,
+          startMinute: 0,
+          finishHour: 9 + fullWeekEvent.periodIndex,
+          finishMinute: 0,
+          widthFactor: 1.0,
+          attachmentIds: [], // No attachments for full week events
+          curriculumOutcomeIds: [], // No curriculum outcomes for full week events
+          hyperlinks: [], // No hyperlinks for full week events
+          createdAt: fullWeekEvent.date ?? DateTime.now(),
+          updatedAt: DateTime.now(),
+          isFullWeekEvent: true, // Mark this as a full week event
+        ));
       }
     }
 
@@ -128,6 +166,13 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           updatedAt: DateTime.now(),
         );
       }).toList();
+      
+      // Sort lessons by start time for proper order
+      lessons.sort((a, b) {
+        final aTime = a.startHour * 60 + a.startMinute;
+        final bTime = b.startHour * 60 + b.startMinute;
+        return aTime.compareTo(bTime);
+      });
     }
 
     setState(() {
@@ -370,6 +415,70 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   }
 
   Widget _buildLessonCard(EnhancedEventBlock event, ThemeData theme, bool isMobile, bool isTablet, bool isDesktop) {
+    // Show simplified card for full week events
+    if (event.isFullWeekEvent) {
+      return Container(
+        margin: EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Container(
+          padding: EdgeInsets.all(isMobile ? 12 : 16),
+          decoration: BoxDecoration(
+            color: event.color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: event.color.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                Icons.event,
+                color: event.color,
+                size: isMobile ? 20 : 24,
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      event.subject,
+                      style: (isMobile ? theme.textTheme.titleMedium : theme.textTheme.titleLarge)?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: event.color,
+                      ),
+                    ),
+                    if (event.body.isNotEmpty) ...[
+                      SizedBox(height: 4),
+                      Text(
+                        event.body,
+                        style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
+                          color: event.color.withOpacity(0.7),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Regular lesson card for normal lessons
     return Container(
       margin: EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(

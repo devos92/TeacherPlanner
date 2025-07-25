@@ -168,6 +168,7 @@ class EnhancedEventBlock {
   final List<String> hyperlinks;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final bool isFullWeekEvent; // Add this field to distinguish full week events
 
   EnhancedEventBlock({
     required this.id,
@@ -186,6 +187,7 @@ class EnhancedEventBlock {
     this.hyperlinks = const [],
     required this.createdAt,
     required this.updatedAt,
+    this.isFullWeekEvent = false, // Default to false for regular lessons
   });
 
   // Helper getter for duration in minutes
@@ -217,6 +219,7 @@ class EnhancedEventBlock {
     List<String>? hyperlinks,
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? isFullWeekEvent,
   }) {
     return EnhancedEventBlock(
       id: id ?? this.id,
@@ -235,6 +238,7 @@ class EnhancedEventBlock {
       hyperlinks: hyperlinks ?? this.hyperlinks,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      isFullWeekEvent: isFullWeekEvent ?? this.isFullWeekEvent,
     );
   }
 }

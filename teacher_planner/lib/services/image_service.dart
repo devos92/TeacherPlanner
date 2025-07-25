@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import 'supabase_service.dart';
@@ -46,6 +47,28 @@ class ImageService {
       return null;
     } catch (e) {
       debugPrint('Error picking image from camera: $e');
+      return null;
+    }
+  }
+
+  /// Pick any file (image, document, etc.)
+  static Future<File?> pickAnyFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+        withData: true,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+        if (file.path != null) {
+          return File(file.path!);
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error picking file: $e');
       return null;
     }
   }
