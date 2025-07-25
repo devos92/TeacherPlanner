@@ -1,34 +1,14 @@
 import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'supabase_service.dart';
 
 class ImageService {
   static final ImagePicker _picker = ImagePicker();
-
-  /// Pick image from camera
-  static Future<File?> pickImageFromCamera() async {
-    try {
-      final XFile? image = await _picker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1920,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
-      
-      if (image != null) {
-        return File(image.path);
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error picking image from camera: $e');
-      return null;
-    }
-  }
 
   /// Pick image from gallery
   static Future<File?> pickImageFromGallery() async {
@@ -50,29 +30,102 @@ class ImageService {
     }
   }
 
-  /// Pick any file (image, document, etc.)
-  static Future<File?> pickAnyFile() async {
+  /// Pick image from camera
+  static Future<File?> pickImageFromCamera() async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.any,
-        allowMultiple: false,
-        withData: true,
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
       );
-
-      if (result != null && result.files.isNotEmpty) {
-        final file = result.files.first;
-        if (file.path != null) {
-          return File(file.path!);
-        }
+      
+      if (image != null) {
+        return File(image.path);
       }
       return null;
     } catch (e) {
-      debugPrint('Error picking file: $e');
+      debugPrint('Error picking image from camera: $e');
       return null;
     }
   }
 
-  /// Save image to app's local storage
+  /// Pick multiple images from gallery
+  static Future<List<File>> pickMultipleImages() async {
+    try {
+      final List<XFile> images = await _picker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      
+      return images.map((image) => File(image.path)).toList();
+    } catch (e) {
+      debugPrint('Error picking multiple images: $e');
+      return [];
+    }
+  }
+
+  /// Show image picker dialog
+  static void showImagePicker(BuildContext context, Function(File) onImageSelected) {
+    showModalBottomSheet(
+      context: context,
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_library),
+                title: Text('Gallery'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await pickImageFromGallery();
+                  if (file != null) {
+                    onImageSelected(file);
+                  }
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.photo_camera),
+                title: Text('Camera'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  final file = await pickImageFromCamera();
+                  if (file != null) {
+                    onImageSelected(file);
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Upload image to Supabase and return the public URL
+  static Future<String?> uploadImageToSupabase(File imageFile, {String? customName}) async {
+    try {
+      if (!SupabaseService.isAuthenticated) {
+        debugPrint('User not authenticated - falling back to local storage');
+        return await saveImageToLocal(imageFile);
+      }
+
+      final result = await SupabaseService.uploadImage(imageFile, customName: customName);
+      if (result != null) {
+        debugPrint('✅ Image uploaded to Supabase: $result');
+        return result;
+      } else {
+        debugPrint('⚠️ Supabase upload failed - falling back to local storage');
+        return await saveImageToLocal(imageFile);
+      }
+    } catch (e) {
+      debugPrint('Error uploading to Supabase: $e - falling back to local storage');
+      return await saveImageToLocal(imageFile);
+    }
+  }
+
+  /// Save image to app's local storage with improved error handling
   static Future<String?> saveImageToLocal(File imageFile) async {
     try {
       // Handle web platform differently
@@ -84,7 +137,24 @@ class ImageService {
 
       Directory appDir;
       try {
-        appDir = await getApplicationDocumentsDirectory();
+        if (Platform.isWindows) {
+          // Special handling for Windows
+          try {
+            appDir = await getApplicationDocumentsDirectory();
+          } catch (e) {
+            debugPrint('Windows getApplicationDocumentsDirectory failed: $e');
+            // Fallback to user directory
+            final userProfile = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'];
+            if (userProfile != null) {
+              appDir = Directory('$userProfile/Documents/TeacherPlanner');
+            } else {
+              appDir = Directory.current;
+            }
+          }
+        } else {
+          // Other platforms
+          appDir = await getApplicationDocumentsDirectory();
+        }
       } catch (e) {
         // Fallback to temporary directory if path_provider fails
         debugPrint('Failed to get application documents directory: $e');
@@ -106,10 +176,64 @@ class ImageService {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(imageFile.path)}';
       final savedFile = await imageFile.copy('${imagesDir.path}/$fileName');
       
+      debugPrint('📁 Image saved locally: ${savedFile.path}');
       return savedFile.path;
     } catch (e) {
-      debugPrint('Error saving image: $e');
+      debugPrint('Error saving image locally: $e');
       return null;
+    }
+  }
+
+  /// Delete image (works with both Supabase URLs and local paths)
+  static Future<bool> deleteImage(String imagePath) async {
+    try {
+      if (imagePath.isEmpty) {
+        debugPrint('Error deleting image: Empty path provided');
+        return false;
+      }
+
+      // Check if it's a Supabase URL
+      if (imagePath.startsWith('http') && imagePath.contains('supabase')) {
+        if (SupabaseService.isAuthenticated) {
+          final success = await SupabaseService.deleteImage(imagePath);
+          debugPrint(success ? 
+            '✅ Supabase image deleted: $imagePath' : 
+            '❌ Failed to delete Supabase image: $imagePath');
+          return success;
+        } else {
+          debugPrint('❌ Cannot delete Supabase image: User not authenticated');
+          return false;
+        }
+      } else {
+        // Handle local file deletion
+        return await deleteLocalImage(imagePath);
+      }
+    } catch (e) {
+      debugPrint('Error deleting image: $e');
+      return false;
+    }
+  }
+
+  /// Delete local image file with better error handling
+  static Future<bool> deleteLocalImage(String imagePath) async {
+    try {
+      if (imagePath.isEmpty) {
+        debugPrint('Error deleting image: Empty path provided');
+        return false;
+      }
+
+      final file = File(imagePath);
+      if (await file.exists()) {
+        await file.delete();
+        debugPrint('✅ Local image deleted: $imagePath');
+        return true;
+      } else {
+        debugPrint('⚠️ Local image file does not exist: $imagePath');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ Error deleting local image: $e');
+      return false;
     }
   }
 
@@ -155,22 +279,7 @@ class ImageService {
     }
   }
 
-  /// Delete local image file
-  static Future<bool> deleteLocalImage(String imagePath) async {
-    try {
-      final file = File(imagePath);
-      if (await file.exists()) {
-        await file.delete();
-        return true;
-      }
-      return false;
-    } catch (e) {
-      debugPrint('Error deleting image: $e');
-      return false;
-    }
-  }
-
-  /// Get all local images
+  /// Get all local images with improved platform handling
   static Future<List<File>> getLocalImages() async {
     try {
       // Handle web platform
@@ -180,7 +289,23 @@ class ImageService {
       
       Directory appDir;
       try {
-        appDir = await getApplicationDocumentsDirectory();
+        if (Platform.isWindows) {
+          // Special handling for Windows
+          try {
+            appDir = await getApplicationDocumentsDirectory();
+          } catch (e) {
+            debugPrint('Windows getApplicationDocumentsDirectory failed: $e');
+            // Fallback to user directory
+            final userProfile = Platform.environment['USERPROFILE'] ?? Platform.environment['HOME'];
+            if (userProfile != null) {
+              appDir = Directory('$userProfile/Documents/TeacherPlanner');
+            } else {
+              return [];
+            }
+          }
+        } else {
+          appDir = await getApplicationDocumentsDirectory();
+        }
       } catch (e) {
         debugPrint('Failed to get application documents directory: $e');
         return [];
@@ -198,5 +323,43 @@ class ImageService {
       debugPrint('Error getting local images: $e');
       return [];
     }
+  }
+
+  /// Migrate local images to Supabase (for users who want to sync their data)
+  static Future<Map<String, String>> migrateLocalImagesToSupabase() async {
+    final migrationMap = <String, String>{};
+    
+    try {
+      if (!SupabaseService.isAuthenticated) {
+        debugPrint('Cannot migrate: User not authenticated');
+        return migrationMap;
+      }
+
+      final localImages = await getLocalImages();
+      debugPrint('Found ${localImages.length} local images to migrate');
+
+      for (final imageFile in localImages) {
+        try {
+          final supabaseUrl = await SupabaseService.uploadImage(imageFile);
+          if (supabaseUrl != null) {
+            migrationMap[imageFile.path] = supabaseUrl;
+            debugPrint('✅ Migrated: ${path.basename(imageFile.path)}');
+            
+            // Optionally delete local file after successful upload
+            // await imageFile.delete();
+          } else {
+            debugPrint('❌ Failed to migrate: ${path.basename(imageFile.path)}');
+          }
+        } catch (e) {
+          debugPrint('❌ Error migrating ${path.basename(imageFile.path)}: $e');
+        }
+      }
+
+      debugPrint('🎉 Migration complete: ${migrationMap.length}/${localImages.length} images migrated');
+    } catch (e) {
+      debugPrint('❌ Migration error: $e');
+    }
+
+    return migrationMap;
   }
 } 

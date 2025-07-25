@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:path/path.dart' as path;
 import '../models/curriculum_models.dart';
+import 'supabase_service.dart';
 
 enum StorageProvider {
   supabase,
@@ -19,45 +20,59 @@ abstract class StorageService {
 }
 
 class SupabaseStorageService implements StorageService {
-  // TODO: Add Supabase configuration
-  // final SupabaseClient _supabase;
-  
-  SupabaseStorageService() {
-    // Initialize Supabase client
-  }
-
   @override
   Future<String> uploadFile(File file, String folder) async {
-    // Mock implementation for now
-    await Future.delayed(Duration(milliseconds: 500)); // Simulate upload time
-    return 'mock://${folder}/${path.basename(file.path)}';
+    final fileName = path.basename(file.path);
+    final result = await SupabaseService.uploadImage(file, customName: fileName);
+    if (result == null) {
+      throw Exception('Failed to upload file to Supabase storage');
+    }
+    return result;
   }
 
   @override
   Future<String> uploadBytes(Uint8List bytes, String fileName, String folder) async {
-    // Mock implementation for now
-    await Future.delayed(Duration(milliseconds: 500)); // Simulate upload time
-    return 'mock://${folder}/${fileName}';
+    final result = await SupabaseService.uploadImageBytes(bytes, fileName);
+    if (result == null) {
+      throw Exception('Failed to upload bytes to Supabase storage');
+    }
+    return result;
   }
 
   @override
   Future<void> deleteFile(String url) async {
-    // Mock implementation for now
-    await Future.delayed(Duration(milliseconds: 200)); // Simulate delete time
+    final success = await SupabaseService.deleteImage(url);
+    if (!success) {
+      throw Exception('Failed to delete file from Supabase storage');
+    }
   }
 
   @override
   Future<Uint8List> downloadFile(String url) async {
-    // Mock implementation for now
-    await Future.delayed(Duration(milliseconds: 300)); // Simulate download time
-    return Uint8List.fromList([0]); // Return empty bytes
+    // For Supabase public URLs, we can fetch directly
+    final client = HttpClient();
+    try {
+      final request = await client.getUrl(Uri.parse(url));
+      final response = await request.close();
+      
+      if (response.statusCode == 200) {
+        final bytes = await response.expand((chunk) => chunk).toList();
+        return Uint8List.fromList(bytes);
+      } else {
+        throw Exception('Failed to download file: ${response.statusCode}');
+      }
+    } catch (e) {
+      throw Exception('Failed to download file: $e');
+    } finally {
+      client.close();
+    }
   }
 
   @override
   Future<List<Attachment>> listAttachments(String folder) async {
-    // Mock implementation for now
-    await Future.delayed(Duration(milliseconds: 200)); // Simulate list time
-    return []; // Return empty list
+    // This would require additional Supabase queries
+    // For now, return empty list as this is typically handled by specific queries
+    return [];
   }
 }
 
