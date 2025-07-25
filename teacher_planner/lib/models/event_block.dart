@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 class EventBlock {
   String day;
   String subject; // Title
-  String subtitle; // Sub‑header
+  String subtitle; // Sub-header
   String body; // our editable text
   Color color;
   int startHour;

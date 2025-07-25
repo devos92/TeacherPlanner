@@ -28,32 +28,36 @@ class SupabaseStorageService implements StorageService {
 
   @override
   Future<String> uploadFile(File file, String folder) async {
-    // TODO: Implement Supabase file upload
-    throw UnimplementedError('Supabase storage not yet implemented');
+    // Mock implementation for now
+    await Future.delayed(Duration(milliseconds: 500)); // Simulate upload time
+    return 'mock://${folder}/${path.basename(file.path)}';
   }
 
   @override
   Future<String> uploadBytes(Uint8List bytes, String fileName, String folder) async {
-    // TODO: Implement Supabase bytes upload
-    throw UnimplementedError('Supabase storage not yet implemented');
+    // Mock implementation for now
+    await Future.delayed(Duration(milliseconds: 500)); // Simulate upload time
+    return 'mock://${folder}/${fileName}';
   }
 
   @override
   Future<void> deleteFile(String url) async {
-    // TODO: Implement Supabase file deletion
-    throw UnimplementedError('Supabase storage not yet implemented');
+    // Mock implementation for now
+    await Future.delayed(Duration(milliseconds: 200)); // Simulate delete time
   }
 
   @override
   Future<Uint8List> downloadFile(String url) async {
-    // TODO: Implement Supabase file download
-    throw UnimplementedError('Supabase storage not yet implemented');
+    // Mock implementation for now
+    await Future.delayed(Duration(milliseconds: 300)); // Simulate download time
+    return Uint8List.fromList([0]); // Return empty bytes
   }
 
   @override
   Future<List<Attachment>> listAttachments(String folder) async {
-    // TODO: Implement Supabase file listing
-    throw UnimplementedError('Supabase storage not yet implemented');
+    // Mock implementation for now
+    await Future.delayed(Duration(milliseconds: 200)); // Simulate list time
+    return []; // Return empty list
   }
 }
 

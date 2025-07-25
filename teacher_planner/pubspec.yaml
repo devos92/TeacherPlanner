@@ -18,6 +18,13 @@ dependencies:
   shared_preferences: ^2.2.2
   file_picker: ^6.1.1
   path: ^1.8.3
+  # PDF and sharing dependencies
+  pdf: ^3.10.7
+  share_plus: ^7.2.1
+  image_picker: ^1.0.7
+  permission_handler: ^11.3.0
+  # Responsive design
+  responsive_framework: ^1.1.1
 
 dev_dependencies:
   flutter_test:

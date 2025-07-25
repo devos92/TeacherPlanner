@@ -48,8 +48,9 @@ class _HomePageState extends State<HomePage> {
             context,
             MaterialPageRoute(
               builder: (context) => EnhancedDayDetailPage(
-                day: 'Mon',
+                day: 'Monday',
                 events: [], // Add empty events list
+                dayIndex: 0, // Add required dayIndex parameter (0 = Monday)
               ),
             ),
           );

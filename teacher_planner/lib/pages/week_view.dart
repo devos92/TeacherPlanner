@@ -182,12 +182,21 @@ class _WeekViewState extends State<WeekView> {
     final dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     final dayName = dayNames[dayIndex];
     
+    // Get the weekly plan data from the widget
+    List<WeeklyPlanData>? weeklyPlanData;
+    if (_weeklyPlanKey.currentState != null) {
+      // Access the plan data from the WeeklyPlanWidget state using the getter
+      weeklyPlanData = _weeklyPlanKey.currentState!.planData;
+    }
+    
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => EnhancedDayDetailPage(
           day: dayName,
           events: <EventBlock>[], // Properly typed empty events list
+          weeklyPlanData: weeklyPlanData, // Pass the weekly plan data
+          dayIndex: dayIndex, // Pass the day index
         ),
       ),
     );
