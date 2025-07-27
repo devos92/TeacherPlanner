@@ -345,13 +345,7 @@ class _TermPlannerPageState extends State<TermPlannerPage> {
           Container(
             width: 80,
             height: 100, // Square cells
-            decoration: BoxDecoration(
-              border: Border(
-                left: BorderSide(color: Colors.grey[300]!, width: 1),
-                right: BorderSide(color: Colors.grey[300]!, width: 1),
-                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-              ),
-            ),
+        
           ),
           // Week days
           ...List.generate(5, (dayIndex) {
@@ -365,6 +359,7 @@ class _TermPlannerPageState extends State<TermPlannerPage> {
                 child: Container(
                   decoration: BoxDecoration(
                     border: Border(
+                      left: BorderSide(color: Colors.grey[300]!, width: 1),
                       right: BorderSide(color: Colors.grey[300]!, width: 1), // Keep all right borders
                       bottom: BorderSide(color: Colors.grey[300]!, width: 1),
                     ),
@@ -400,14 +395,14 @@ class _TermPlannerPageState extends State<TermPlannerPage> {
           color: events.isNotEmpty 
             ? events.first.color.withOpacity(0.15)
             : (isToday ? Colors.blue.withOpacity(0.1) : Colors.white),
-          // Removed individual cell borders since they're now handled by the parent containers
+          
         ),
         child: Padding(
           padding: EdgeInsets.all(6),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Week number at the top (if this is the first day of the week)
+             
               if (showWeekNumber && weekNumber != null) ...[
                 GestureDetector(
                   onTap: () => _showWeekNavigation(weekNumber),
