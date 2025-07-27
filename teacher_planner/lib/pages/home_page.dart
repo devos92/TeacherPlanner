@@ -6,6 +6,7 @@ import 'week_view.dart';
 import 'term_planner_page.dart';
 import 'day_view.dart';
 import 'enhanced_day_detail_page.dart';
+import 'long_term_planning_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -18,6 +19,7 @@ class _HomePageState extends State<HomePage> {
     TermPlannerPage(),
     WeekView(),
     DayView(),
+    LongTermPlanningPage(), // Add the new long-term planning page
   ];
 
   @override
@@ -58,7 +60,7 @@ class _HomePageState extends State<HomePage> {
       ),
       child: BottomNavigationBar(
         currentIndex: _currentIndex,
-        type: BottomNavigationBarType.fixed,
+        type: BottomNavigationBarType.fixed, // Changed to fixed to accommodate 4 tabs
         
         // Adaptive sizing
         iconSize: isTablet ? 28 : 24,
@@ -106,6 +108,18 @@ class _HomePageState extends State<HomePage> {
             ),
             label: 'Day',
             tooltip: 'Daily planner view',
+          ),
+          BottomNavigationBarItem(
+            icon: Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Icon(Icons.description),
+            ),
+            activeIcon: Padding(
+              padding: EdgeInsets.symmetric(vertical: 4),
+              child: Icon(Icons.description, color: Theme.of(context).primaryColor),
+            ),
+            label: 'Planning',
+            tooltip: 'Long-term planning documents',
           ),
         ],
         

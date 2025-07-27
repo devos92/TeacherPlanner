@@ -555,49 +555,6 @@ class LessonDialogs {
             );
           }).toList(),
         ),
-        
-        SizedBox(height: isTablet ? 12 : 8),
-        
-        // Reset to default color option
-        GestureDetector(
-          onTap: () {
-            HapticFeedback.lightImpact();
-            onColorSelected(_dayColors[data.dayIndex]);
-          },
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isTablet ? 16 : 12,
-              vertical: isTablet ? 12 : 8,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey[300]!),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: isTablet ? 24 : 20,
-                  height: isTablet ? 24 : 20,
-                  decoration: BoxDecoration(
-                    color: _dayColors[data.dayIndex],
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                ),
-                SizedBox(width: isTablet ? 12 : 8),
-                Text(
-                  'Use Day Color',
-                  style: TextStyle(
-                    fontSize: isTablet ? 14 : 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[700],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }

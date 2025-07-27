@@ -276,15 +276,7 @@ class _TermPlannerPageState extends State<TermPlannerPage> {
           Container(
             width: 80,
             height: 100, // Square cells
-            decoration: BoxDecoration(
-              color: Colors.grey[50],
-              border: Border(
-                top: BorderSide(color: Colors.grey[300]!, width: 1),
-                left: BorderSide(color: Colors.grey[300]!, width: 1),
-                right: BorderSide(color: Colors.grey[300]!, width: 1),
-                bottom: BorderSide(color: Colors.grey[300]!, width: 1),
-              ),
-            ),
+          
             child: Center(
               child: RotatedBox(
                 quarterTurns: 3, // Rotate text 90 degrees
@@ -313,6 +305,7 @@ class _TermPlannerPageState extends State<TermPlannerPage> {
                   decoration: BoxDecoration(
                     border: Border(
                       top: BorderSide(color: Colors.grey[300]!, width: 1),
+                      left: isFirstDay ? BorderSide(color: Colors.grey[300]!, width: 1) : BorderSide.none, // Add left border to Monday
                       right: BorderSide(color: Colors.grey[300]!, width: 1), // Keep all right borders
                       bottom: BorderSide(color: Colors.grey[300]!, width: 1),
                     ),
@@ -1134,6 +1127,26 @@ class _AddEventDialogState extends State<_AddEventDialog> {
   TermEventType _eventType = TermEventType.schoolEvent;
   Color _eventColor = Colors.blue;
 
+  // Same color palette as lessons
+  static const List<Color> _eventColors = [
+    Color(0xFFA36361), 
+    Color(0xFF88895B), 
+    Color(0xFF558E9B), 
+    Color(0xFFA386A9), 
+    Color(0xFFC96349),
+    Color(0xFF84A48B), 
+    Color(0xFF7BB2BA), 
+    Color(0xFFE89B88), 
+    Color(0xFFF79E70), 
+    Color(0xFFAECBB8), 
+    Color(0xFFC1D8DF), 
+    Color(0xFFF9D0CD),
+    Color(0xFFE7C878), 
+    Color(0xFFF6D487),
+    Color(0xFFC6B3CA), 
+    Color(0xFFD1A996),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -1153,52 +1166,82 @@ class _AddEventDialogState extends State<_AddEventDialog> {
 
   @override
   Widget build(BuildContext context) {
+    // Get screen information for responsive design
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final isTablet = screenWidth > 768;
+    
     return AlertDialog(
       title: Text(widget.existingEvent == null ? 'Add Term Event' : 'Edit Term Event'),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _titleController,
-              decoration: InputDecoration(
-                labelText: 'Event Title',
-                hintText: 'e.g. Public Holiday',
-              ),
-            ),
-            SizedBox(height: 16),
-            TextField(
-              controller: _descriptionController,
-              decoration: InputDecoration(
-                labelText: 'Description (Optional)',
-              ),
-              maxLines: 2,
-            ),
-            SizedBox(height: 16),
-            DropdownButtonFormField<TermEventType>(
-              value: _eventType,
-              decoration: InputDecoration(labelText: 'Event Type'),
-              items: TermEventType.values.map((type) =>
-                DropdownMenuItem(
-                  value: type,
-                  child: Text(type.displayName),
+      content: Container(
+        width: isTablet ? 500 : screenWidth * 0.9,
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _titleController,
+                decoration: InputDecoration(
+                  labelText: 'Event Title',
+                  hintText: 'e.g. Public Holiday',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-              ).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _eventType = value!;
-                  _eventColor = value.defaultColor;
-                });
-              },
-            ),
-            SizedBox(height: 16),
-            ListTile(
-              title: Text('Date'),
-              subtitle: Text(_startDate == null ? 'Select date' : _formatDate(_startDate!)),
-              trailing: Icon(Icons.calendar_today),
-              onTap: _selectDate,
-            ),
-          ],
+                textCapitalization: TextCapitalization.words,
+              ),
+              SizedBox(height: 16),
+              TextField(
+                controller: _descriptionController,
+                decoration: InputDecoration(
+                  labelText: 'Description (Optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                maxLines: 2,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+              SizedBox(height: 16),
+              DropdownButtonFormField<TermEventType>(
+                value: _eventType,
+                decoration: InputDecoration(
+                  labelText: 'Event Type',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                items: TermEventType.values.map((type) =>
+                  DropdownMenuItem(
+                    value: type,
+                    child: Text(type.displayName),
+                  ),
+                ).toList(),
+                onChanged: (value) {
+                  setState(() {
+                    _eventType = value!;
+                    // Don't auto-change color when type changes, let user pick
+                  });
+                },
+              ),
+              SizedBox(height: 16),
+              ListTile(
+                title: Text('Date'),
+                subtitle: Text(_startDate == null ? 'Select date' : _formatDate(_startDate!)),
+                trailing: Icon(Icons.calendar_today),
+                onTap: _selectDate,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(color: Colors.grey[300]!),
+                ),
+              ),
+              SizedBox(height: 16),
+              _buildColorSelectionSection(isTablet),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -1209,6 +1252,76 @@ class _AddEventDialogState extends State<_AddEventDialog> {
         ElevatedButton(
           onPressed: _canCreate() ? _createEvent : null,
           child: Text(widget.existingEvent == null ? 'Add Event' : 'Update Event'),
+        ),
+      ],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+    );
+  }
+
+  Widget _buildColorSelectionSection(bool isTablet) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Event Color',
+          style: TextStyle(
+            fontSize: isTablet ? 16 : 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[700],
+          ),
+        ),
+        SizedBox(height: isTablet ? 12 : 8),
+        
+        // Enhanced color grid with better touch targets
+        Wrap(
+          spacing: isTablet ? 12 : 8,
+          runSpacing: isTablet ? 12 : 8,
+          children: _eventColors.map((color) {
+            final isSelected = _eventColor == color;
+            
+            return GestureDetector(
+              onTap: () {
+                setState(() {
+                  _eventColor = color;
+                });
+              },
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 200),
+                width: isTablet ? 48 : 40,
+                height: isTablet ? 48 : 40,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
+                  border: Border.all(
+                    color: isSelected ? Colors.black87 : Colors.grey[300]!,
+                    width: isSelected ? 3 : 1,
+                  ),
+                  boxShadow: isSelected ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.3),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ] : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 2,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: isSelected
+                    ? Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: isTablet ? 24 : 20,
+                      )
+                    : null,
+              ),
+            );
+          }).toList(),
         ),
       ],
     );
@@ -1239,9 +1352,8 @@ class _AddEventDialogState extends State<_AddEventDialog> {
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim(),
       startDate: _startDate!,
-      // No endDate - single day event
       type: _eventType,
-      color: _eventColor,
+      color: _eventColor, // Use the selected color
     );
     
     widget.onEventAdded(event);
