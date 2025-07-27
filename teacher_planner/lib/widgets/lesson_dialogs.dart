@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/weekly_plan_data.dart';
 
 class LessonDialogs {
@@ -46,6 +47,13 @@ class LessonDialogs {
     required DateTime? weekStartDate,
     required String nextLessonId,
   }) async {
+    // Get screen information for responsive design
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final screenHeight = mediaQuery.size.height;
+    final isTablet = screenWidth > 768;
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+    
     String subject = '';
     String content = '';
     String notes = '';
@@ -54,106 +62,210 @@ class LessonDialogs {
 
     final result = await showDialog<WeeklyPlanData>(
       context: context,
+      useSafeArea: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Add Lesson to ${_dayNames[data.dayIndex]} - Period ${data.periodIndex + 1}'),
+          title: Text(
+            'Add Lesson to ${_dayNames[data.dayIndex]} - Period ${data.periodIndex + 1}',
+            style: TextStyle(
+              fontSize: isTablet ? 20 : 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          
           content: Container(
-            width: 400,
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Subject *',
-                      hintText: 'e.g., Mathematics, English, Science',
-                      border: OutlineInputBorder(),
-                      errorMaxLines: 2,
+            width: isTablet ? 500 : screenWidth * 0.9,
+            constraints: BoxConstraints(
+              maxHeight: screenHeight * 0.8,
+              maxWidth: isTablet ? 500 : screenWidth * 0.9,
+            ),
+            
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Subject field
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Subject *',
+                        hintText: 'e.g., Mathematics, English, Science',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16, 
+                          vertical: isTablet ? 16 : 12,
+                        ),
+                        labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        hintStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        errorMaxLines: 2,
+                      ),
+                      style: TextStyle(fontSize: isTablet ? 16 : 14),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Subject is required';
+                        }
+                        if (value.trim().length > 50) {
+                          return 'Subject must be 50 characters or less';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) => subject = value,
+                      autofocus: !isTablet, // Less aggressive autofocus on tablets
+                      maxLength: 50,
+                      textCapitalization: TextCapitalization.words,
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Subject is required';
-                      }
-                      if (value.trim().length > 50) {
-                        return 'Subject must be 50 characters or less';
-                      }
-                      return null;
-                    },
-                    onChanged: (value) => subject = value,
-                    autofocus: true,
-                    maxLength: 50,
-                  ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Lesson Content',
-                      hintText: 'Describe what will be taught in this lesson...',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      errorMaxLines: 2,
+                    
+                    SizedBox(height: isTablet ? 20 : 16),
+                    
+                    // Content field
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Lesson Content',
+                        hintText: 'Describe what will be taught in this lesson...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16, 
+                          vertical: isTablet ? 16 : 12,
+                        ),
+                        alignLabelWithHint: true,
+                        labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        hintStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        errorMaxLines: 2,
+                      ),
+                      style: TextStyle(fontSize: isTablet ? 16 : 14),
+                      validator: (value) {
+                        if (value != null && value.trim().length > 500) {
+                          return 'Content must be 500 characters or less';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) => content = value,
+                      maxLines: isTablet ? 4 : 3,
+                      maxLength: 500,
+                      textCapitalization: TextCapitalization.sentences,
                     ),
-                    validator: (value) {
-                      if (value != null && value.trim().length > 500) {
-                        return 'Content must be 500 characters or less';
-                      }
-                      return null;
-                    },
-                    maxLines: 4,
-                    maxLength: 500,
-                    onChanged: (value) => content = value,
-                  ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Notes (Optional)',
-                      hintText: 'Additional notes, resources, or reminders',
-                      border: OutlineInputBorder(),
-                      errorMaxLines: 2,
+                    
+                    SizedBox(height: isTablet ? 20 : 16),
+                    
+                    // Notes field
+                    TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Notes (Optional)',
+                        hintText: 'Additional notes, resources, or reminders',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16, 
+                          vertical: isTablet ? 16 : 12,
+                        ),
+                        labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        hintStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        errorMaxLines: 2,
+                      ),
+                      style: TextStyle(fontSize: isTablet ? 16 : 14),
+                      validator: (value) {
+                        if (value != null && value.trim().length > 200) {
+                          return 'Notes must be 200 characters or less';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) => notes = value,
+                      maxLines: isTablet ? 3 : 2,
+                      maxLength: 200,
+                      textCapitalization: TextCapitalization.sentences,
                     ),
-                    validator: (value) {
-                      if (value != null && value.trim().length > 200) {
-                        return 'Notes must be 200 characters or less';
-                      }
-                      return null;
-                    },
-                    maxLines: 2,
-                    maxLength: 200,
-                    onChanged: (value) => notes = value,
-                  ),
-                  SizedBox(height: 16),
-                  _buildColorSelectionSection(data, selectedColor, (newColor) {
-                    setDialogState(() {
-                      selectedColor = newColor;
-                    });
-                  }),
-                ],
+                    
+                    SizedBox(height: isTablet ? 20 : 16),
+                    
+                    // Color selection section
+                    _buildColorSelectionSection(data, selectedColor, (newColor) {
+                      setDialogState(() {
+                        selectedColor = newColor;
+                      });
+                    }, isTablet),
+                  ],
+                ),
               ),
             ),
           ),
+          
           actions: [
+            // Cancel button
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel'),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.of(context).pop();
+              },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 24 : 16,
+                  vertical: isTablet ? 12 : 8,
+                ),
+                minimumSize: Size(isTablet ? 100 : 80, isTablet ? 48 : 44),
+              ),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
+            
+            // Add button
             ElevatedButton(
               onPressed: () {
-                if (formKey.currentState?.validate() == true) {
-                  final newLesson = data.copyWith(
+                if (formKey.currentState!.validate()) {
+                  HapticFeedback.mediumImpact();
+                  
+                  final updatedData = data.copyWith(
+                    isLesson: true,
                     subject: subject.trim(),
                     content: content.trim(),
                     notes: notes.trim(),
                     lessonId: nextLessonId,
-                    isLesson: true,
-                    date: weekStartDate?.add(Duration(days: data.dayIndex)),
                     lessonColor: selectedColor,
                   );
-                  Navigator.pop(context, newLesson);
+                  Navigator.of(context).pop(updatedData);
+                } else {
+                  HapticFeedback.lightImpact();
                 }
               },
-              child: Text('Save Lesson'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 24 : 16,
+                  vertical: isTablet ? 12 : 8,
+                ),
+                minimumSize: Size(isTablet ? 120 : 100, isTablet ? 48 : 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Add Lesson',
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
+          
+          // Enhanced dialog styling
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 8,
+          actionsPadding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 24 : 16,
+            vertical: isTablet ? 16 : 12,
+          ),
         ),
       ),
     );
@@ -165,6 +277,13 @@ class LessonDialogs {
     required BuildContext context,
     required WeeklyPlanData data,
   }) async {
+    // Get screen information for responsive design
+    final mediaQuery = MediaQuery.of(context);
+    final screenWidth = mediaQuery.size.width;
+    final screenHeight = mediaQuery.size.height;
+    final isTablet = screenWidth > 768;
+    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+    
     String subject = data.subject;
     String content = data.content;
     String notes = data.notes;
@@ -173,94 +292,155 @@ class LessonDialogs {
 
     final result = await showDialog<WeeklyPlanData>(
       context: context,
+      useSafeArea: true,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text('Edit Lesson - ${_dayNames[data.dayIndex]} Period ${data.periodIndex + 1}'),
+          title: Text(
+            'Edit Lesson - ${_dayNames[data.dayIndex]} Period ${data.periodIndex + 1}',
+            style: TextStyle(
+              fontSize: isTablet ? 20 : 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           content: Container(
-            width: 400,
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    initialValue: subject,
-                    decoration: InputDecoration(
-                      labelText: 'Subject *',
-                      hintText: 'e.g., Mathematics, English, Science',
-                      border: OutlineInputBorder(),
-                      errorMaxLines: 2,
+            width: isTablet ? 500 : screenWidth * 0.9,
+            constraints: BoxConstraints(
+              maxHeight: screenHeight * 0.8,
+              maxWidth: isTablet ? 500 : screenWidth * 0.9,
+            ),
+            child: SingleChildScrollView(
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextFormField(
+                      initialValue: subject,
+                      decoration: InputDecoration(
+                        labelText: 'Subject *',
+                        hintText: 'e.g., Mathematics, English, Science',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16, 
+                          vertical: isTablet ? 16 : 12,
+                        ),
+                        labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        hintStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        errorMaxLines: 2,
+                      ),
+                      style: TextStyle(fontSize: isTablet ? 16 : 14),
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Subject is required';
+                        }
+                        if (value.trim().length > 50) {
+                          return 'Subject must be 50 characters or less';
+                        }
+                        return null;
+                      },
+                      onChanged: (value) => subject = value,
+                      autofocus: !isTablet,
+                      maxLength: 50,
+                      textCapitalization: TextCapitalization.words,
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Subject is required';
-                      }
-                      if (value.trim().length > 50) {
-                        return 'Subject must be 50 characters or less';
-                      }
-                      return null;
-                    },
-                    onChanged: (value) => subject = value,
-                    autofocus: true,
-                    maxLength: 50,
-                  ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    initialValue: content,
-                    decoration: InputDecoration(
-                      labelText: 'Lesson Content',
-                      hintText: 'Describe what will be taught in this lesson...',
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      errorMaxLines: 2,
+                    SizedBox(height: isTablet ? 20 : 16),
+                    TextFormField(
+                      initialValue: content,
+                      decoration: InputDecoration(
+                        labelText: 'Lesson Content',
+                        hintText: 'Describe what will be taught in this lesson...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16, 
+                          vertical: isTablet ? 16 : 12,
+                        ),
+                        alignLabelWithHint: true,
+                        labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        hintStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        errorMaxLines: 2,
+                      ),
+                      style: TextStyle(fontSize: isTablet ? 16 : 14),
+                      validator: (value) {
+                        if (value != null && value.trim().length > 500) {
+                          return 'Content must be 500 characters or less';
+                        }
+                        return null;
+                      },
+                      maxLines: isTablet ? 4 : 3,
+                      maxLength: 500,
+                      onChanged: (value) => content = value,
+                      textCapitalization: TextCapitalization.sentences,
                     ),
-                    validator: (value) {
-                      if (value != null && value.trim().length > 500) {
-                        return 'Content must be 500 characters or less';
-                      }
-                      return null;
-                    },
-                    maxLines: 4,
-                    maxLength: 500,
-                    onChanged: (value) => content = value,
-                  ),
-                  SizedBox(height: 16),
-                  TextFormField(
-                    initialValue: notes,
-                    decoration: InputDecoration(
-                      labelText: 'Notes (Optional)',
-                      hintText: 'Additional notes, resources, or reminders',
-                      border: OutlineInputBorder(),
-                      errorMaxLines: 2,
+                    SizedBox(height: isTablet ? 20 : 16),
+                    TextFormField(
+                      initialValue: notes,
+                      decoration: InputDecoration(
+                        labelText: 'Notes (Optional)',
+                        hintText: 'Additional notes, resources, or reminders',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(
+                          horizontal: 16, 
+                          vertical: isTablet ? 16 : 12,
+                        ),
+                        labelStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        hintStyle: TextStyle(fontSize: isTablet ? 16 : 14),
+                        errorMaxLines: 2,
+                      ),
+                      style: TextStyle(fontSize: isTablet ? 16 : 14),
+                      validator: (value) {
+                        if (value != null && value.trim().length > 200) {
+                          return 'Notes must be 200 characters or less';
+                        }
+                        return null;
+                      },
+                      maxLines: isTablet ? 3 : 2,
+                      maxLength: 200,
+                      onChanged: (value) => notes = value,
+                      textCapitalization: TextCapitalization.sentences,
                     ),
-                    validator: (value) {
-                      if (value != null && value.trim().length > 200) {
-                        return 'Notes must be 200 characters or less';
-                      }
-                      return null;
-                    },
-                    maxLines: 2,
-                    maxLength: 200,
-                    onChanged: (value) => notes = value,
-                  ),
-                  SizedBox(height: 16),
-                  _buildColorSelectionSection(data, selectedColor, (newColor) {
-                    setDialogState(() {
-                      selectedColor = newColor;
-                    });
-                  }),
-                ],
+                    SizedBox(height: isTablet ? 20 : 16),
+                    _buildColorSelectionSection(data, selectedColor, (newColor) {
+                      setDialogState(() {
+                        selectedColor = newColor;
+                      });
+                    }, isTablet),
+                  ],
+                ),
               ),
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text('Cancel'),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.pop(context);
+              },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 24 : 16,
+                  vertical: isTablet ? 12 : 8,
+                ),
+                minimumSize: Size(isTablet ? 100 : 80, isTablet ? 48 : 44),
+              ),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
                 if (formKey.currentState?.validate() == true) {
+                  HapticFeedback.mediumImpact();
+                  
                   final updatedLesson = data.copyWith(
                     subject: subject.trim(),
                     content: content.trim(),
@@ -268,11 +448,39 @@ class LessonDialogs {
                     lessonColor: selectedColor,
                   );
                   Navigator.pop(context, updatedLesson);
+                } else {
+                  HapticFeedback.lightImpact();
                 }
               },
-              child: Text('Update Lesson'),
+              style: ElevatedButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 24 : 16,
+                  vertical: isTablet ? 12 : 8,
+                ),
+                minimumSize: Size(isTablet ? 120 : 100, isTablet ? 48 : 44),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Update Lesson',
+                style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ],
+          
+          // Enhanced dialog styling
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          elevation: 8,
+          actionsPadding: EdgeInsets.symmetric(
+            horizontal: isTablet ? 24 : 16,
+            vertical: isTablet ? 16 : 12,
+          ),
         ),
       ),
     );
@@ -284,6 +492,7 @@ class LessonDialogs {
     WeeklyPlanData data, 
     Color? selectedColor, 
     Function(Color?) onColorSelected,
+    bool isTablet,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -291,62 +500,103 @@ class LessonDialogs {
         Text(
           'Lesson Color',
           style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
+            fontSize: isTablet ? 16 : 14,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey[700],
           ),
         ),
-        SizedBox(height: 12),
-        // Default day color option
-        Row(
-          children: [
-            GestureDetector(
-              onTap: () => onColorSelected(null),
-              child: Container(
-                width: 40,
-                height: 40,
-                margin: EdgeInsets.only(right: 8),
+        SizedBox(height: isTablet ? 12 : 8),
+        
+        // Enhanced color grid with better touch targets
+        Wrap(
+          spacing: isTablet ? 12 : 8,
+          runSpacing: isTablet ? 12 : 8,
+          children: _lessonColors.map((color) {
+            final isSelected = selectedColor == color;
+            
+            return GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                onColorSelected(color);
+              },
+              child: AnimatedContainer(
+                duration: Duration(milliseconds: 200),
+                width: isTablet ? 48 : 40,
+                height: isTablet ? 48 : 40,
                 decoration: BoxDecoration(
-                  color: _dayColors[data.dayIndex],
-                  borderRadius: BorderRadius.circular(8),
+                  color: color,
+                  borderRadius: BorderRadius.circular(isTablet ? 12 : 10),
                   border: Border.all(
-                    color: selectedColor == null ? Colors.black : Colors.grey[300]!,
-                    width: selectedColor == null ? 3 : 1,
+                    color: isSelected ? Colors.black87 : Colors.grey[300]!,
+                    width: isSelected ? 3 : 1,
                   ),
+                  boxShadow: isSelected ? [
+                    BoxShadow(
+                      color: color.withOpacity(0.3),
+                      blurRadius: 8,
+                      spreadRadius: 2,
+                    ),
+                  ] : [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 2,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
                 ),
-                child: selectedColor == null
-                    ? Icon(Icons.check, color: Colors.white, size: 20)
+                child: isSelected
+                    ? Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: isTablet ? 24 : 20,
+                      )
                     : null,
               ),
-            ),
-            Text(
-              'Default (${_dayNames[data.dayIndex]})',
-              style: TextStyle(fontSize: 14),
-            ),
-          ],
+            );
+          }).toList(),
         ),
-        SizedBox(height: 12),
-        // Custom color options
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: _lessonColors.map((color) => GestureDetector(
-            onTap: () => onColorSelected(color),
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: selectedColor == color ? Colors.black : Colors.grey[300]!,
-                  width: selectedColor == color ? 3 : 1,
-                ),
-              ),
-              child: selectedColor == color
-                  ? Icon(Icons.check, color: Colors.white, size: 20)
-                  : null,
+        
+        SizedBox(height: isTablet ? 12 : 8),
+        
+        // Reset to default color option
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            onColorSelected(_dayColors[data.dayIndex]);
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 16 : 12,
+              vertical: isTablet ? 12 : 8,
             ),
-          )).toList(),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: isTablet ? 24 : 20,
+                  height: isTablet ? 24 : 20,
+                  decoration: BoxDecoration(
+                    color: _dayColors[data.dayIndex],
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                SizedBox(width: isTablet ? 12 : 8),
+                Text(
+                  'Use Day Color',
+                  style: TextStyle(
+                    fontSize: isTablet ? 14 : 12,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ],
     );
