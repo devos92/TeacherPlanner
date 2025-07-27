@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../models/event_block.dart';
 import 'week_view.dart';
 
 class LessonDetailPage extends StatelessWidget {

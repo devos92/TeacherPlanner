@@ -2,7 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'week_view.dart';
-import 'month_view.dart';
+import 'term_planner_page.dart';
 import 'day_view.dart';
 import 'enhanced_day_detail_page.dart';
 
@@ -14,7 +14,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 1; // Default to week view
   final _pages = [
-    MonthView(),
+    TermPlannerPage(),
     WeekView(),
     DayView(),
   ];
@@ -27,8 +27,8 @@ class _HomePageState extends State<HomePage> {
         currentIndex: _currentIndex,
         items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_view_month),
-            label: 'Month',
+            icon: Icon(Icons.calendar_today),
+            label: 'Term Planner',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.view_week),

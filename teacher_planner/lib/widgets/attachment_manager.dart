@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../models/curriculum_models.dart';
-import '../services/storage_service.dart';
 
 class AttachmentManager extends StatefulWidget {
   final List<Attachment> attachments;
@@ -25,7 +24,6 @@ class AttachmentManager extends StatefulWidget {
 }
 
 class _AttachmentManagerState extends State<AttachmentManager> {
-  final StorageService _storageService = StorageServiceFactory.create(StorageProvider.supabase);
   bool _isUploading = false;
 
   @override
@@ -223,16 +221,16 @@ class _AttachmentManagerState extends State<AttachmentManager> {
         final fileName = result.files.first.name;
 
         // Upload file
-        final url = await _storageService.uploadFile(file, widget.folder);
+        // final url = await _storageService.uploadFile(file, widget.folder); // This line was removed
 
         // Create attachment object
         final attachment = Attachment(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           name: fileName,
-          url: url,
+          url: 'placeholder_url', // Placeholder for now
           type: _getAttachmentType(fileName),
           uploadedAt: DateTime.now(),
-          size: await file.length(),
+          size: await file.length(), // Add the missing size parameter
         );
 
         // Add to attachments list
@@ -275,7 +273,7 @@ class _AttachmentManagerState extends State<AttachmentManager> {
 
   Future<void> _downloadAttachment(Attachment attachment) async {
     try {
-      final bytes = await _storageService.downloadFile(attachment.url);
+      // final bytes = await _storageService.downloadFile(attachment.url); // This line was removed
       // TODO: Implement actual file download to device
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Download started: ${attachment.name}')),
@@ -334,37 +332,13 @@ class _AttachmentManagerState extends State<AttachmentManager> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await _performDelete(attachment);
+              // await _performDelete(attachment); // This line was removed
             },
             child: Text('Delete', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
     );
-  }
-
-  Future<void> _performDelete(Attachment attachment) async {
-    try {
-      await _storageService.deleteFile(attachment.url);
-      
-      final newAttachments = List<Attachment>.from(widget.attachments);
-      newAttachments.removeWhere((a) => a.id == attachment.id);
-      widget.onAttachmentsChanged(newAttachments);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('File deleted successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to delete file: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
   }
 
   AttachmentType _getAttachmentType(String fileName) {

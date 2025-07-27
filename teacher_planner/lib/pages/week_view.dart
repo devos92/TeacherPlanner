@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../widgets/period_selection_dialog.dart';
 import '../widgets/weekly_plan_widget.dart';
 import '../models/event_block.dart'; // Add import for EventBlock
+import '../models/weekly_plan_data.dart'; // Updated import path
 import 'enhanced_day_detail_page.dart'; // Add import for day detail page
 
 class WeekView extends StatefulWidget {

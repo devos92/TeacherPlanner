@@ -4,14 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/curriculum_models.dart';
 import '../models/event_block.dart';
-import '../services/storage_service.dart';
+import '../models/weekly_plan_data.dart'; // Updated import path
 import '../services/pdf_service.dart';
 import '../services/image_service.dart';
 import '../widgets/curriculum_sidebar.dart';
 import '../widgets/attachment_manager.dart';
-import '../widgets/weekly_plan_widget.dart'; // Import WeeklyPlanData
 import 'week_view.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
 
@@ -41,9 +41,6 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   bool _showCurriculumSidebar = true;
   bool _isGeneratingPdf = false;
 
-  final StorageService _storageService =
-      StorageServiceFactory.create(StorageProvider.supabase);
-
   @override
   void initState() {
     super.initState();
@@ -71,7 +68,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           subject: lesson.subject.isNotEmpty ? lesson.subject : 'Lesson ${lesson.periodIndex + 1}',
           subtitle: 'Period ${lesson.periodIndex + 1}',
           body: lesson.content.isNotEmpty ? lesson.content : 'No description available',
-          color: _getColorForPeriod(lesson.periodIndex),
+          color: lesson.lessonColor ?? _getColorForPeriod(lesson.periodIndex), // Use lesson's custom color if available
           startHour: 8 + lesson.periodIndex, // Default start time based on period
           startMinute: 0,
           finishHour: 9 + lesson.periodIndex, // Default end time based on period
@@ -97,7 +94,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
               subject: subLesson.subject.isNotEmpty ? subLesson.subject : 'Sub Lesson',
               subtitle: 'Period ${subLesson.periodIndex + 1} - Additional',
               body: subLesson.content.isNotEmpty ? subLesson.content : 'No description available',
-              color: _getColorForPeriod(subLesson.periodIndex),
+              color: subLesson.lessonColor ?? _getColorForPeriod(subLesson.periodIndex), // Use sub lesson's custom color if available
               startHour: 8 + subLesson.periodIndex,
               startMinute: 0,
               finishHour: 9 + subLesson.periodIndex,
@@ -181,19 +178,21 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   }
 
   Color _getColorForPeriod(int periodIndex) {
-    // Use the same colors as the weekly plan
-    const List<Color> dayColors = [
-      Color(0xA3A380), // Monday - Light Purple
-      Color(0xD7CE93), // Tuesday - Light Orange
-      Color(0xEFEBCE), // Wednesday - Light Green
-      Color(0xD8A48F), // Thursday - Light Pink
-      Color(0xBB8588), // Friday - Light Teal
+    // Use the same lesson colors as the weekly plan for consistency
+    const List<Color> lessonColors = [
+      Color(0xFFD9BDAF), Color(0xFFC68484), Color(0xFFAE7A53), 
+      Color(0xFF8F8369), Color(0xFF848370), Color(0xFFA1ADA7), 
+      Color(0xFFB16B47), Color(0xFFE4D8C8), Color(0xFFD5916A), 
+      Color(0xFFD6A48B), Color(0xFF7F6E5D), Color(0xFFC2914C),
+      Color(0xFFB07B5C), Color(0xFF9A8C6F),
+      Color(0xFFD9C89C), Color(0xFFC4C0B4),
+      Color(0xFFBFAC84), Color(0xFFBFAC84),
+      Color(0xFFF2DBC9), Color(0xFFD49F78),
+      Color(0xFFF8ECD9),
     ];
     
-    // Use day color with period variation
-    final baseColor = dayColors[widget.dayIndex % dayColors.length];
-    final periodVariation = (periodIndex * 0.1).clamp(0.0, 0.3);
-    return baseColor.withValues(alpha: (0.7 + periodVariation).clamp(0.5, 1.0));
+    // Return a lesson color based on period index, cycling through the available colors
+    return lessonColors[periodIndex % lessonColors.length];
   }
 
   @override
@@ -433,10 +432,10 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
         child: Container(
           padding: EdgeInsets.all(isMobile ? 12 : 16),
           decoration: BoxDecoration(
-            color: event.color.withOpacity(0.1),
+            color: event.color.withOpacity(0.3), // More solid background
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: event.color.withOpacity(0.3),
+              color: event.color.withOpacity(0.6), // More solid border
               width: 1,
             ),
           ),
@@ -464,7 +463,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                       Text(
                         event.body,
                         style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-                          color: event.color.withOpacity(0.7),
+                          color: event.color.withOpacity(0.8), // Less transparent text
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -498,13 +497,13 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           Container(
             padding: EdgeInsets.all(isMobile ? 16 : 20),
             decoration: BoxDecoration(
-              color: event.color.withOpacity(0.1),
+              color: event.color.withOpacity(0.3), // More solid background
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
               ),
               border: Border.all(
-                color: event.color.withOpacity(0.3),
+                color: event.color.withOpacity(0.6), // More solid border
                 width: 1,
               ),
             ),
@@ -527,7 +526,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                         Text(
                           event.subtitle,
                           style: (isMobile ? theme.textTheme.bodyMedium : theme.textTheme.titleMedium)?.copyWith(
-                            color: event.color.withOpacity(0.7),
+                            color: event.color.withOpacity(0.8), // Less transparent text
                           ),
                         ),
                       ],
@@ -790,68 +789,144 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
             ),
           )
         else
-          ...event.attachmentIds.map((imagePath) => Container(
-            margin: EdgeInsets.only(bottom: 6),
-            padding: EdgeInsets.all(isMobile ? 6 : 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.image,
-                  color: event.color,
-                  size: isMobile ? 12 : 14,
+          // Display images in a grid layout for better visual presentation
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: event.attachmentIds.map((imagePath) {
+              final file = File(imagePath);
+              final fileName = path.basename(imagePath);
+              
+              return Container(
+                width: isMobile ? 120 : 150,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: event.color.withOpacity(0.3),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 6),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        path.basename(imagePath),
-                        style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: event.color,
-                          fontSize: isMobile ? 9 : 10,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image display
+                    ClipRRect(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                      child: Container(
+                        height: isMobile ? 80 : 100,
+                        width: double.infinity,
+                        child: file.existsSync()
+                            ? Image.file(
+                                file,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey.shade200,
+                                    child: Icon(
+                                      Icons.broken_image,
+                                      color: Colors.grey.shade400,
+                                      size: isMobile ? 30 : 40,
+                                    ),
+                                  );
+                                },
+                              )
+                            : Container(
+                                color: Colors.grey.shade200,
+                                child: Icon(
+                                  Icons.image_not_supported,
+                                  color: Colors.grey.shade400,
+                                  size: isMobile ? 30 : 40,
+                                ),
+                              ),
                       ),
-                      if (!isMobile) ...[
-                        SizedBox(height: 2),
-                        Text(
-                          ImageService.getFileSize(File(imagePath)),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade600,
-                            fontSize: 8,
+                    ),
+                    // Image info and controls
+                    Padding(
+                      padding: EdgeInsets.all(6),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fileName,
+                            style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: event.color,
+                              fontSize: isMobile ? 8 : 9,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
-                    ],
-                  ),
+                          if (!isMobile && file.existsSync()) ...[
+                            SizedBox(height: 2),
+                            Text(
+                              ImageService.getFileSize(file),
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey.shade600,
+                                fontSize: 7,
+                              ),
+                            ),
+                          ],
+                          SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // View button
+                              Expanded(
+                                child: GestureDetector(
+                                  onTap: () => _viewImage(imagePath),
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                                    decoration: BoxDecoration(
+                                      color: event.color.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'View',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: event.color,
+                                        fontSize: isMobile ? 7 : 8,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              // Remove button
+                              GestureDetector(
+                                onTap: () => _removePicture(event, imagePath),
+                                child: Container(
+                                  padding: EdgeInsets.all(2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Icon(
+                                    Icons.close,
+                                    size: isMobile ? 8 : 10,
+                                    color: Colors.red.shade400,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  onPressed: () => _removePicture(event, imagePath),
-                  icon: Icon(
-                    Icons.close,
-                    size: isMobile ? 10 : 12,
-                    color: Colors.red.shade400,
-                  ),
-                  padding: EdgeInsets.zero,
-                  constraints: BoxConstraints(
-                    minWidth: isMobile ? 14 : 16, 
-                    minHeight: isMobile ? 14 : 16
-                  ),
-                ),
-              ],
-            ),
-          )).toList(),
+              );
+            }).toList(),
+          ),
       ],
     );
   }
@@ -1395,5 +1470,66 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
       final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
       if (idx != -1) _enhancedEvents[idx] = updatedEvent;
     });
+  }
+
+  void _viewImage(String imagePath) {
+    final file = File(imagePath);
+    if (file.existsSync()) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: Text('View Image'),
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.share),
+                  onPressed: () {
+                    // TODO: Implement image sharing
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Image sharing not yet implemented')),
+                    );
+                  },
+                ),
+              ],
+            ),
+            body: Center(
+              child: InteractiveViewer(
+                child: Image.file(
+                  file,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.broken_image,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Unable to load image',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Image not found: ${path.basename(imagePath)}'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../pages/enhanced_day_detail_page.dart';
 import '../models/curriculum_models.dart';
 import '../services/curriculum_service.dart';
-import '../services/storage_service.dart';
 import '../services/database_service.dart';
 import 'week_view.dart';
 
