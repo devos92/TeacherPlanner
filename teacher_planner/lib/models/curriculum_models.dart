@@ -215,6 +215,7 @@ class EnhancedEventBlock {
   final String subtitle;
   final String body;
   final String notes; // Add notes property
+  final String? headerText; // Add headerText property
   final Color color;
   final int startHour;
   final int startMinute;
@@ -238,6 +239,7 @@ class EnhancedEventBlock {
     this.subtitle = '',
     this.body = '',
     this.notes = '', // Default notes
+    this.headerText, // Default headerText
     required this.color,
     required this.startHour,
     this.startMinute = 0,
@@ -284,6 +286,7 @@ class EnhancedEventBlock {
     String? subtitle,
     String? body,
     String? notes,
+    String? headerText,
     Color? color,
     int? startHour,
     int? startMinute,
@@ -307,6 +310,7 @@ class EnhancedEventBlock {
       subtitle: subtitle ?? this.subtitle,
       body: body ?? this.body,
       notes: notes ?? this.notes,
+      headerText: headerText ?? this.headerText,
       color: color ?? this.color,
       startHour: startHour ?? this.startHour,
       startMinute: startMinute ?? this.startMinute,
@@ -334,6 +338,7 @@ class EnhancedEventBlock {
       'subtitle': subtitle,
       'body': body,
       'notes': notes,
+      'headerText': headerText,
       'color': color.value,
       'startHour': startHour,
       'startMinute': startMinute,
@@ -360,6 +365,7 @@ class EnhancedEventBlock {
       subtitle: json['subtitle'] as String? ?? '',
       body: json['body'] as String? ?? '',
       notes: json['notes'] as String? ?? '',
+      headerText: json['headerText'] as String?,
       color: Color(json['color'] as int),
       startHour: json['startHour'] as int,
       startMinute: json['startMinute'] as int? ?? 0,

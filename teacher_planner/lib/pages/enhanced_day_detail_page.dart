@@ -14,6 +14,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
+import '../config/app_fonts.dart';
 
 class EnhancedDayDetailPage extends StatefulWidget {
   final String day;
@@ -465,161 +466,537 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
               ),
             ],
           ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _editEvent(event),
-              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-              child: Container(
+          child: Column(
+            children: [
+              // Header with period and subject
+              Container(
+                padding: EdgeInsets.all(isTablet ? 20 : 16),
+                decoration: BoxDecoration(
+                  color: event.color.withOpacity(0.1),
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(isTablet ? 16 : 12),
+                    topRight: Radius.circular(isTablet ? 16 : 12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    // Period badge
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isTablet ? 12 : 10,
+                        vertical: isTablet ? 8 : 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: event.color.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
+                        border: Border.all(
+                          color: event.color.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        'Period ${event.periodIndex + 1}',
+                        style: AppFonts.labelMedium.copyWith(
+                          color: event.color,
+                          fontSize: isTablet ? 14 : 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    
+                    SizedBox(width: 12),
+                    
+                    // Subject
+                    Expanded(
+                      child: Text(
+                        event.headerText?.isNotEmpty == true 
+                            ? event.headerText! 
+                            : event.subject,
+                        style: AppFonts.lessonTitle.copyWith(
+                          fontSize: isTablet ? 22 : 18,
+                          color: Colors.grey[900],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              
+              // Content section with inline editing
+              Container(
                 padding: EdgeInsets.all(isTablet ? 20 : 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Header with period and time
-                    Row(
-                      children: [
-                        // Period badge with modern design
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 12 : 10,
-                            vertical: isTablet ? 8 : 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: event.color.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
-                            border: Border.all(
-                              color: event.color.withOpacity(0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(
-                            'Period ${event.periodIndex + 1}',
-                            style: TextStyle(
-                              color: event.color,
-                              fontSize: isTablet ? 14 : 12,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
-                        
-                        // Time display removed as requested
-                      ],
-                    ),
+                    // Lesson Details Section
+                    _buildInlineDetailsSection(event, isTablet),
                     
-                    SizedBox(height: isTablet ? 16 : 12),
+                    SizedBox(height: 20),
                     
-                    // Subject with better typography hierarchy
-                    Text(
-                      event.subject,
-                      style: TextStyle(
-                        fontSize: isTablet ? 22 : 18,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey[900],
-                        height: 1.2,
-                      ),
-                    ),
+                    // Teacher Notes Section
+                    _buildInlineNotesSection(event, isTablet),
                     
-                    if (event.notes.isNotEmpty) ...[
-                      SizedBox(height: isTablet ? 12 : 8),
-                      Text(
-                        event.notes,
-                        style: TextStyle(
-                          fontSize: isTablet ? 16 : 14,
-                          color: Colors.grey[600],
-                          height: 1.4,
-                        ),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    SizedBox(height: 20),
                     
-                    // Enhanced metadata section
-                    if (event.attachments.isNotEmpty || event.hyperlinks.isNotEmpty || event.curriculumOutcomes.isNotEmpty) ...[
-                      SizedBox(height: isTablet ? 16 : 12),
-                      Container(
-                        padding: EdgeInsets.all(isTablet ? 16 : 12),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[50],
-                          borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
-                          border: Border.all(
-                            color: Colors.grey[200]!,
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          children: [
-                            if (event.attachments.isNotEmpty)
-                              _buildMetadataRow(
-                                Icons.attach_file,
-                                '${event.attachments.length} attachment${event.attachments.length > 1 ? 's' : ''}',
-                                Colors.blue[600]!,
-                                isTablet,
-                              ),
-                            
-                            if (event.hyperlinks.isNotEmpty) ...[
-                              if (event.attachments.isNotEmpty) SizedBox(height: 8),
-                              _buildMetadataRow(
-                                Icons.link,
-                                '${event.hyperlinks.length} link${event.hyperlinks.length > 1 ? 's' : ''}',
-                                Colors.green[600]!,
-                                isTablet,
-                              ),
-                            ],
-                            
-                            if (event.curriculumOutcomes.isNotEmpty) ...[
-                              if (event.attachments.isNotEmpty || event.hyperlinks.isNotEmpty) SizedBox(height: 8),
-                              _buildMetadataRow(
-                                Icons.school,
-                                '${event.curriculumOutcomes.length} outcome${event.curriculumOutcomes.length > 1 ? 's' : ''}',
-                                Colors.purple[600]!,
-                                isTablet,
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                    ],
+                    // Attachments and Links Section
+                    _buildInlineResourcesSection(event, isTablet),
                   ],
                 ),
               ),
-            ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  void _editEvent(EnhancedEventBlock event) {
-    showDialog(
-      context: context,
-      builder: (context) => _EditLessonDialog(
-        event: event,
-        onSave: (updatedEvent) {
-          setState(() {
-            // Update the enhanced event
-            final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
-            if (idx != -1) _enhancedEvents[idx] = updatedEvent;
-            
-            // Update the weekly plan data
-            final planIdx = _localWeeklyPlanData.indexWhere((data) => 
-              data.lessonId == event.id && 
-              data.dayIndex == widget.dayIndex
-            );
-            if (planIdx != -1) {
-              _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(
-                content: updatedEvent.body,
-                notes: updatedEvent.notes,
-                // TODO: Add attachments and hyperlinks to WeeklyPlanData model
+  Widget _buildInlineDetailsSection(EnhancedEventBlock event, bool isTablet) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.description_outlined, color: event.color, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Lesson Details',
+              style: TextStyle(
+                fontSize: isTablet ? 16 : 14,
+                fontWeight: FontWeight.w600,
+                color: event.color,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+        TextFormField(
+          initialValue: event.body,
+          onChanged: (value) {
+            setState(() {
+              // Update the enhanced event
+              final updatedEvent = event.copyWith(
+                body: value,
+                updatedAt: DateTime.now(),
               );
+              final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
+              if (idx != -1) _enhancedEvents[idx] = updatedEvent;
               
-              // Save changes back to parent
-              _saveChangesToWeeklyPlan();
-            }
-          });
-        },
-      ),
+              // Update the weekly plan data
+              final planIdx = _localWeeklyPlanData.indexWhere((data) => 
+                data.lessonId == event.id && 
+                data.dayIndex == widget.dayIndex
+              );
+              if (planIdx != -1) {
+                _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(
+                  content: value,
+                );
+                
+                // Save changes back to parent
+                _saveChangesToWeeklyPlan();
+              }
+            });
+          },
+          style: AppFonts.userInput.copyWith(
+            fontSize: isTablet ? 16 : 14,
+            height: 1.5,
+          ),
+          maxLines: 6,
+          decoration: InputDecoration(
+            labelText: 'Lesson Details',
+            hintText: 'Enter detailed lesson description, activities, objectives...',
+            hintStyle: AppFonts.userInput.copyWith(
+              color: Colors.grey.shade400,
+              fontSize: isTablet ? 14 : 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: event.color.withOpacity(0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: event.color, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+          ),
+        ),
+      ],
     );
+  }
+
+  Widget _buildInlineNotesSection(EnhancedEventBlock event, bool isTablet) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.note_outlined, color: event.color, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Teacher Notes',
+              style: TextStyle(
+                fontSize: isTablet ? 16 : 14,
+                fontWeight: FontWeight.w600,
+                color: event.color,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+        TextFormField(
+          initialValue: event.notes,
+          onChanged: (value) {
+            setState(() {
+              // Update the enhanced event
+              final updatedEvent = event.copyWith(
+                notes: value,
+                updatedAt: DateTime.now(),
+              );
+              final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
+              if (idx != -1) _enhancedEvents[idx] = updatedEvent;
+              
+              // Update the weekly plan data
+              final planIdx = _localWeeklyPlanData.indexWhere((data) => 
+                data.lessonId == event.id && 
+                data.dayIndex == widget.dayIndex
+              );
+              if (planIdx != -1) {
+                _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(
+                  notes: value,
+                );
+                
+                // Save changes back to parent
+                _saveChangesToWeeklyPlan();
+              }
+            });
+          },
+          style: AppFonts.userInput.copyWith(
+            fontSize: isTablet ? 16 : 14,
+            height: 1.5,
+          ),
+          maxLines: 4,
+          decoration: InputDecoration(
+            labelText: 'Teacher Notes',
+            hintText: 'Add your notes, reminders, or additional details...',
+            hintStyle: AppFonts.userInput.copyWith(
+              color: Colors.grey.shade400,
+              fontSize: isTablet ? 14 : 12,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: event.color.withOpacity(0.3)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: event.color, width: 2),
+            ),
+            filled: true,
+            fillColor: Colors.grey.shade50,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInlineResourcesSection(EnhancedEventBlock event, bool isTablet) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.attach_file_outlined, color: event.color, size: 20),
+            SizedBox(width: 8),
+            Text(
+              'Resources',
+              style: TextStyle(
+                fontSize: isTablet ? 16 : 14,
+                fontWeight: FontWeight.w600,
+                color: event.color,
+              ),
+            ),
+            Spacer(),
+            // Add buttons
+            TextButton.icon(
+              onPressed: () => _addPicture(event),
+              icon: Icon(Icons.add_photo_alternate_outlined, size: 16),
+              label: Text('Picture'),
+              style: TextButton.styleFrom(
+                foregroundColor: event.color,
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+              ),
+            ),
+            SizedBox(width: 8),
+            TextButton.icon(
+              onPressed: () => _addHyperlink(event),
+              icon: Icon(Icons.link_outlined, size: 16),
+              label: Text('Link'),
+              style: TextButton.styleFrom(
+                foregroundColor: event.color,
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+        
+        // Display existing resources
+        if (event.attachmentIds.isNotEmpty || event.hyperlinks.isNotEmpty) ...[
+          // Pictures
+          if (event.attachmentIds.isNotEmpty) ...[
+            Text(
+              'Pictures',
+              style: TextStyle(
+                fontSize: isTablet ? 14 : 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: event.attachmentIds.map((imagePath) {
+                final file = File(imagePath);
+                final fileName = path.basename(imagePath);
+                
+                return Container(
+                  width: isTablet ? 150 : 120,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: event.color.withOpacity(0.3),
+                      width: 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+                        child: Container(
+                          height: isTablet ? 100 : 80,
+                          width: double.infinity,
+                          child: file.existsSync()
+                              ? Image.file(
+                                  file,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      color: Colors.grey.shade200,
+                                      child: Icon(
+                                        Icons.broken_image,
+                                        color: Colors.grey.shade400,
+                                        size: isTablet ? 40 : 30,
+                                      ),
+                                    );
+                                  },
+                                )
+                              : Container(
+                                  color: Colors.grey.shade200,
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.grey.shade400,
+                                    size: isTablet ? 40 : 30,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.all(6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fileName,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: event.color,
+                                fontSize: isTablet ? 9 : 8,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: 4),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: GestureDetector(
+                                    onTap: () => _viewImage(imagePath),
+                                    child: Container(
+                                      padding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
+                                      decoration: BoxDecoration(
+                                        color: event.color.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'View',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: event.color,
+                                          fontSize: isTablet ? 8 : 7,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => _removePicture(event, imagePath),
+                                  child: Container(
+                                    padding: EdgeInsets.all(2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Icon(
+                                      Icons.close,
+                                      size: isTablet ? 10 : 8,
+                                      color: Colors.red.shade400,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ),
+            SizedBox(height: 16),
+          ],
+          
+          // Links
+          if (event.hyperlinks.isNotEmpty) ...[
+            Text(
+              'Links',
+              style: TextStyle(
+                fontSize: isTablet ? 14 : 12,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            SizedBox(height: 8),
+            ...event.hyperlinks.map((linkData) {
+              final parts = linkData.split('|');
+              final linkTitle = parts.length > 0 ? parts[0] : 'Link';
+              final linkUrl = parts.length > 1 ? parts[1] : linkData;
+              
+              return Container(
+                margin: EdgeInsets.only(bottom: 6),
+                padding: EdgeInsets.all(isTablet ? 8 : 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Colors.grey.shade300,
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.link,
+                          color: event.color,
+                          size: isTablet ? 14 : 12,
+                        ),
+                        SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            linkTitle,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: event.color,
+                              fontSize: isTablet ? 10 : 9,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => _removeHyperlink(event, linkData),
+                          icon: Icon(
+                            Icons.close,
+                            size: isTablet ? 12 : 10,
+                            color: Colors.red.shade400,
+                          ),
+                          padding: EdgeInsets.zero,
+                          constraints: BoxConstraints(
+                            minWidth: isTablet ? 16 : 14, 
+                            minHeight: isTablet ? 16 : 14
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      linkUrl,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: isTablet ? 9 : 8,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ],
+        ] else ...[
+          Container(
+            padding: EdgeInsets.all(isTablet ? 12 : 10),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: Colors.grey.shade300,
+                style: BorderStyle.solid,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  color: Colors.grey.shade600,
+                  size: isTablet ? 16 : 14,
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'No resources added yet. Click "Picture" or "Link" to add.',
+                  style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontSize: isTablet ? 11 : 10,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  void _editEvent(EnhancedEventBlock event) {
+    // This method is no longer needed since we use inline editing
+    // Keeping for compatibility but it's not used
   }
 
   Widget _buildMetadataRow(IconData icon, String text, Color color, bool isTablet) {
@@ -1786,5 +2163,445 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
         ),
       );
     }
+  }
+}
+
+class _EditLessonDialog extends StatefulWidget {
+  final EnhancedEventBlock event;
+  final Function(EnhancedEventBlock) onSave;
+
+  const _EditLessonDialog({
+    required this.event,
+    required this.onSave,
+  });
+
+  @override
+  _EditLessonDialogState createState() => _EditLessonDialogState();
+}
+
+class _EditLessonDialogState extends State<_EditLessonDialog> {
+  late TextEditingController _detailsController;
+  late TextEditingController _notesController;
+  late TextEditingController _linkUrlController;
+  late TextEditingController _linkTitleController;
+  
+  List<Attachment> _attachments = [];
+  List<Hyperlink> _hyperlinks = [];
+  List<CurriculumOutcome> _curriculumOutcomes = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _detailsController = TextEditingController(text: widget.event.body);
+    _notesController = TextEditingController(text: widget.event.notes);
+    _linkUrlController = TextEditingController();
+    _linkTitleController = TextEditingController();
+    
+    // Initialize existing data
+    _attachments = List.from(widget.event.attachments);
+    _hyperlinks = List.from(widget.event.hyperlinks);
+    _curriculumOutcomes = List.from(widget.event.curriculumOutcomes);
+  }
+
+  @override
+  void dispose() {
+    _detailsController.dispose();
+    _notesController.dispose();
+    _linkUrlController.dispose();
+    _linkTitleController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final screenSize = MediaQuery.of(context).size;
+    final isMobile = screenSize.width < 600;
+    
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        width: isMobile ? screenSize.width * 0.9 : 600,
+        constraints: BoxConstraints(maxHeight: screenSize.height * 0.8),
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: widget.event.color.withOpacity(0.1),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.edit, color: widget.event.color),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Edit ${widget.event.subject}',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: widget.event.color,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Lesson Details
+                    _buildSection(
+                      'Lesson Details',
+                      Icons.description,
+                      Column(
+                        children: [
+                          TextFormField(
+                            controller: _detailsController,
+                            decoration: InputDecoration(
+                              labelText: 'Lesson Description',
+                              hintText: 'Enter detailed lesson description...',
+                              border: OutlineInputBorder(),
+                            ),
+                            maxLines: 4,
+                          ),
+                          SizedBox(height: 16),
+                          TextFormField(
+                            controller: _notesController,
+                            decoration: InputDecoration(
+                              labelText: 'Teacher Notes',
+                              hintText: 'Add your notes, reminders, or additional details...',
+                              border: OutlineInputBorder(),
+                            ),
+                            maxLines: 3,
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Attachments
+                    _buildSection(
+                      'Attachments',
+                      Icons.attach_file,
+                      Column(
+                        children: [
+                          // Add attachment button
+                          ElevatedButton.icon(
+                            onPressed: _addAttachment,
+                            icon: Icon(Icons.add),
+                            label: Text('Add File'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue[600],
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          if (_attachments.isNotEmpty) ...[
+                            SizedBox(height: 16),
+                            ..._attachments.map((attachment) => _buildAttachmentTile(attachment)).toList(),
+                          ],
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Hyperlinks
+                    _buildSection(
+                      'Links',
+                      Icons.link,
+                      Column(
+                        children: [
+                          // Add link form
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _linkTitleController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Link Title',
+                                    hintText: 'e.g., YouTube Video',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _linkUrlController,
+                                  decoration: InputDecoration(
+                                    labelText: 'URL',
+                                    hintText: 'https://...',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          ElevatedButton.icon(
+                            onPressed: _addLink,
+                            icon: Icon(Icons.add),
+                            label: Text('Add Link'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[600],
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          if (_hyperlinks.isNotEmpty) ...[
+                            SizedBox(height: 16),
+                            ..._hyperlinks.map((link) => _buildLinkTile(link)).toList(),
+                          ],
+                        ],
+                      ),
+                    ),
+                    
+                    SizedBox(height: 24),
+                    
+                    // Curriculum Outcomes
+                    _buildSection(
+                      'Curriculum Outcomes',
+                      Icons.school,
+                      Column(
+                        children: [
+                          Text(
+                            'Selected outcomes from sidebar will appear here',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                          if (_curriculumOutcomes.isNotEmpty) ...[
+                            SizedBox(height: 16),
+                            ..._curriculumOutcomes.map((outcome) => _buildOutcomeTile(outcome)).toList(),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Footer with save button
+            Container(
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.only(
+                  bottomLeft: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text('Cancel'),
+                  ),
+                  SizedBox(width: 12),
+                  ElevatedButton(
+                    onPressed: _saveChanges,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.event.color,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: Text('Save Changes'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(String title, IconData icon, Widget content) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, color: Colors.grey[600], size: 20),
+            SizedBox(width: 8),
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[800],
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 12),
+        content,
+      ],
+    );
+  }
+
+  Widget _buildAttachmentTile(Attachment attachment) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.attach_file, color: Colors.blue[600]),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              attachment.name,
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete, color: Colors.red[600]),
+            onPressed: () => _removeAttachment(attachment),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLinkTile(Hyperlink link) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey[300]!),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.link, color: Colors.green[600]),
+          SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  link.title,
+                  style: TextStyle(fontWeight: FontWeight.w500),
+                ),
+                Text(
+                  link.url,
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete, color: Colors.red[600]),
+            onPressed: () => _removeLink(link),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOutcomeTile(CurriculumOutcome outcome) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.purple[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.purple[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            outcome.code,
+            style: TextStyle(
+              fontWeight: FontWeight.w600,
+              color: Colors.purple[700],
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            outcome.description,
+            style: TextStyle(fontSize: 12),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addAttachment() {
+    // TODO: Implement file picker
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('File picker coming soon')),
+    );
+  }
+
+  void _removeAttachment(Attachment attachment) {
+    setState(() {
+      _attachments.remove(attachment);
+    });
+  }
+
+  void _addLink() {
+    if (_linkTitleController.text.isNotEmpty && _linkUrlController.text.isNotEmpty) {
+      setState(() {
+        _hyperlinks.add(Hyperlink(
+          id: UniqueKey().toString(),
+          title: _linkTitleController.text,
+          url: _linkUrlController.text,
+        ));
+        _linkTitleController.clear();
+        _linkUrlController.clear();
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter both title and URL')),
+      );
+    }
+  }
+
+  void _removeLink(Hyperlink link) {
+    setState(() {
+      _hyperlinks.remove(link);
+    });
+  }
+
+  void _saveChanges() {
+    final updatedEvent = widget.event.copyWith(
+      body: _detailsController.text,
+      notes: _notesController.text,
+      attachments: _attachments,
+      hyperlinks: _hyperlinks.map((link) => '${link.title}|${link.url}').toList(),
+      curriculumOutcomes: _curriculumOutcomes,
+      updatedAt: DateTime.now(),
+    );
+    
+    widget.onSave(updatedEvent);
+    Navigator.pop(context);
   }
 }

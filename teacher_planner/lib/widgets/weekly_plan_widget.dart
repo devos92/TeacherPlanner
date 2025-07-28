@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/weekly_plan_data.dart';
 import '../widgets/lesson_dialogs.dart';
 import '../widgets/lesson_cell_widgets.dart';
+import '../config/app_fonts.dart';
 
 class WeeklyPlanWidget extends StatefulWidget {
   final int periods;
@@ -803,8 +804,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
             ),
             child: Text(
               '${periodIndex + 1}',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
+              style: AppFonts.periodLabel.copyWith(
                 color: theme.primaryColor.withOpacity(0.8),
                 fontSize: smallFontSize + 8,
               ),
