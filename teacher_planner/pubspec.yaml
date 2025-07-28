@@ -49,6 +49,7 @@ dependencies:
   # Development and debugging
   flutter_launcher_icons: ^0.13.1
 
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

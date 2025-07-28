@@ -602,19 +602,19 @@ class _LongTermPlanningEditorPageState extends State<LongTermPlanningEditorPage>
                 _buildToolbarButton(
                   icon: Icons.format_bold,
                   isActive: _isBold,
-                  onPressed: () => setState(() => _isBold = !_isBold),
+                  onPressed: () => _toggleBold(),
                   tooltip: 'Bold',
                 ),
                 _buildToolbarButton(
                   icon: Icons.format_italic,
                   isActive: _isItalic,
-                  onPressed: () => setState(() => _isItalic = !_isItalic),
+                  onPressed: () => _toggleItalic(),
                   tooltip: 'Italic',
                 ),
                 _buildToolbarButton(
                   icon: Icons.format_underlined,
                   isActive: _isUnderlined,
-                  onPressed: () => setState(() => _isUnderlined = !_isUnderlined),
+                  onPressed: () => _toggleUnderline(),
                   tooltip: 'Underline',
                 ),
                 
@@ -727,21 +727,25 @@ class _LongTermPlanningEditorPageState extends State<LongTermPlanningEditorPage>
         content: Text('You have unsaved changes. Do you want to save before leaving?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Discard'),
+            onPressed: () => Navigator.pop(context, false), // Don't leave, stay on page
+            child: Text('Cancel'),
           ),
           TextButton(
+            onPressed: () => Navigator.pop(context, true), // Leave without saving
+            child: Text('Discard'),
+          ),
+          ElevatedButton(
             onPressed: () async {
               await _savePlan();
-              Navigator.pop(context, true);
+              Navigator.pop(context, true); // Leave after saving
             },
-            child: Text('Save'),
+            child: Text('Save & Exit'),
           ),
         ],
       ),
     );
     
-    return result ?? false;
+    return result ?? false; // If dialog is dismissed, stay on page
   }
 
   void _toggleEditMode() {
@@ -904,6 +908,71 @@ class _LongTermPlanningEditorPageState extends State<LongTermPlanningEditorPage>
       _selectedOutcomes = newOutcomes;
       _hasUnsavedChanges = true;
     });
+  }
+
+  void _toggleBold() {
+    final selection = _contentController.selection;
+    if (selection.isValid) {
+      // Apply formatting only to selected text
+      final text = _contentController.text;
+      final selectedText = text.substring(selection.start, selection.end);
+      
+      if (selectedText.isNotEmpty) {
+        // For now, just toggle the global state and let user know
+        setState(() {
+          _isBold = !_isBold;
+          _hasUnsavedChanges = true;
+        });
+        
+        // Show info about formatting
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Bold formatting will apply to new text you type'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      // No selection, apply to future typing
+      setState(() {
+        _isBold = !_isBold;
+        _hasUnsavedChanges = true;
+      });
+    }
+  }
+
+  void _toggleItalic() {
+    final selection = _contentController.selection;
+    setState(() {
+      _isItalic = !_isItalic;
+      _hasUnsavedChanges = true;
+    });
+    
+    if (!selection.isValid || selection.isCollapsed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Italic formatting will apply to new text you type'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  void _toggleUnderline() {
+    final selection = _contentController.selection;
+    setState(() {
+      _isUnderlined = !_isUnderlined;
+      _hasUnsavedChanges = true;
+    });
+    
+    if (!selection.isValid || selection.isCollapsed) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Underline formatting will apply to new text you type'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }
 

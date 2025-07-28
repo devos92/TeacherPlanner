@@ -19,7 +19,7 @@ class _WeekViewState extends State<WeekView> {
   bool _isLoadingPeriods = false;
   bool _isVerticalLayout = true; // Default to vertical layout
   DateTime _weekStartDate = DateTime.now(); // Add week start date
-  final GlobalKey<WeeklyPlanWidgetState> _weeklyPlanKey = GlobalKey<WeeklyPlanWidgetState>(); // Add key to access widget methods
+  final GlobalKey<WeeklyPlanWidgetState> _weeklyPlanKey = GlobalKey<WeeklyPlanWidgetState>(); 
 
   @override
   void initState() {
@@ -154,6 +154,7 @@ class _WeekViewState extends State<WeekView> {
     }
 
     return WeeklyPlanWidget(
+      key: _weeklyPlanKey, // Use the key to access data
       periods: _periods!,
       isVerticalLayout: _isVerticalLayout,
       onDayTap: _navigateToDayDetail, // Add navigation callback
@@ -165,7 +166,8 @@ class _WeekViewState extends State<WeekView> {
           // Update any local state if needed
         });
       },
-      key: _weeklyPlanKey, // Assign the key
+      onPreviousWeek: () => _navigateWeek(-1), // Previous week callback
+      onNextWeek: () => _navigateWeek(1), // Next week callback
     );
   }
 
@@ -189,11 +191,21 @@ class _WeekViewState extends State<WeekView> {
     final dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
     final dayName = dayNames[dayIndex];
     
-    // Get the weekly plan data from the widget
-    List<WeeklyPlanData>? weeklyPlanData;
+    // Get the actual weekly plan data from the WeeklyPlanWidget
+    List<WeeklyPlanData> weeklyPlanData = [];
+    
+    // Access the real data from the weekly plan widget
     if (_weeklyPlanKey.currentState != null) {
-      // Access the plan data from the WeeklyPlanWidget state using the getter
-      weeklyPlanData = _weeklyPlanKey.currentState!.planData;
+      final allPlanData = _weeklyPlanKey.currentState!.planData;
+      
+      // Filter data for the specific day
+      weeklyPlanData = allPlanData.where((data) => 
+        data.dayIndex == dayIndex && (data.isLesson || data.isFullWeekEvent)
+      ).toList();
+      
+      debugPrint('Found ${weeklyPlanData.length} lessons/events for ${dayName}');
+    } else {
+      debugPrint('WeeklyPlanWidget state not available yet');
     }
     
     Navigator.push(
@@ -201,19 +213,57 @@ class _WeekViewState extends State<WeekView> {
       MaterialPageRoute(
         builder: (context) => EnhancedDayDetailPage(
           day: dayName,
-          events: <EventBlock>[], // Properly typed empty events list
-          weeklyPlanData: weeklyPlanData, // Pass the weekly plan data
+          events: <EventBlock>[], // Keep empty for now
+          weeklyPlanData: weeklyPlanData, // Pass the real weekly plan data
           dayIndex: dayIndex, // Pass the day index
+          onPlanDataChanged: (updatedPlanData) {
+            // Handle when lesson details are updated in the day detail page
+            // Update the weekly plan widget with the changed data
+            if (_weeklyPlanKey.currentState != null) {
+              // Merge the updated data back into the full plan
+              final currentPlanData = List<WeeklyPlanData>.from(_weeklyPlanKey.currentState!.planData);
+              
+              // Remove old data for this day
+              currentPlanData.removeWhere((data) => data.dayIndex == dayIndex);
+              
+              // Add the updated data
+              currentPlanData.addAll(updatedPlanData);
+              
+              // Notify the weekly plan widget of changes
+              setState(() {
+                debugPrint('Plan data updated for ${dayName}: ${updatedPlanData.length} lessons');
+              });
+            }
+          },
         ),
       ),
     );
   }
 
   void _showAddFullWeekEventDialog() {
-    // Call the WeeklyPlanWidget's method to add full week events
+    // Use the GlobalKey to access the WeeklyPlanWidget state
     if (_weeklyPlanKey.currentState != null) {
       _weeklyPlanKey.currentState!.addFullWeekEvent();
+    } else {
+      // Fallback: show a simple dialog if the state is not available yet
+      _showSimpleFullWeekEventDialog();
     }
+  }
+
+  void _showSimpleFullWeekEventDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add Full Week Event'),
+        content: Text('Full week event functionality will be available when the weekly plan is loaded.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _addFullWeekEvent() {

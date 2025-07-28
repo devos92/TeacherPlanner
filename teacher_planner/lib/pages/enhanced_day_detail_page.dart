@@ -20,6 +20,7 @@ class EnhancedDayDetailPage extends StatefulWidget {
   final List<EventBlock> events;
   final List<WeeklyPlanData>? weeklyPlanData; // Add weekly plan data
   final int dayIndex; // Add day index for filtering
+  final Function(List<WeeklyPlanData>)? onPlanDataChanged; // Callback to save changes
 
   const EnhancedDayDetailPage({
     Key? key,
@@ -27,6 +28,7 @@ class EnhancedDayDetailPage extends StatefulWidget {
     required this.events,
     this.weeklyPlanData,
     required this.dayIndex,
+    this.onPlanDataChanged,
   }) : super(key: key);
 
   @override
@@ -36,6 +38,7 @@ class EnhancedDayDetailPage extends StatefulWidget {
 class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   // events and selections
   late List<EnhancedEventBlock> _enhancedEvents;
+  late List<WeeklyPlanData> _localWeeklyPlanData; // Local copy for editing
   List<String> _selectedOutcomeCodes = [];
   List<CurriculumOutcome> _selectedOutcomes = [];
   bool _showCurriculumSidebar = true;
@@ -44,16 +47,20 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   @override
   void initState() {
     super.initState();
+    // Initialize local copy of weekly plan data
+    _localWeeklyPlanData = widget.weeklyPlanData != null 
+        ? List.from(widget.weeklyPlanData!) 
+        : [];
     _loadLessonsFromWeeklyPlan();
   }
 
   void _loadLessonsFromWeeklyPlan() {
     List<EnhancedEventBlock> lessons = [];
 
-    // Load lessons from weekly plan data for this specific day
-    if (widget.weeklyPlanData != null) {
+    // Load lessons from local weekly plan data for this specific day
+    if (_localWeeklyPlanData.isNotEmpty) {
       // Load regular lessons
-      final dayLessons = widget.weeklyPlanData!.where((data) => 
+      final dayLessons = _localWeeklyPlanData.where((data) => 
         data.dayIndex == widget.dayIndex && data.isLesson
       ).toList();
 
@@ -68,11 +75,13 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           subject: lesson.subject.isNotEmpty ? lesson.subject : 'Lesson ${lesson.periodIndex + 1}',
           subtitle: 'Period ${lesson.periodIndex + 1}',
           body: lesson.content.isNotEmpty ? lesson.content : 'No description available',
-          color: lesson.lessonColor ?? _getColorForPeriod(lesson.periodIndex), // Use lesson's custom color if available
-          startHour: 8 + lesson.periodIndex, // Default start time based on period
+          notes: lesson.notes, // Include notes
+          color: lesson.lessonColor ?? _getColorForPeriod(lesson.periodIndex),
+          startHour: 8 + lesson.periodIndex,
           startMinute: 0,
-          finishHour: 9 + lesson.periodIndex, // Default end time based on period
+          finishHour: 9 + lesson.periodIndex,
           finishMinute: 0,
+          periodIndex: lesson.periodIndex,
           widthFactor: 1.0,
           attachmentIds: [], // Will be populated from lesson data
           curriculumOutcomeIds: [], // Will be populated from lesson data
@@ -83,7 +92,6 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
 
         // Add sub-lessons if they exist
         if (lesson.subLessons.isNotEmpty) {
-          // Sort sub-lessons by their period index as well
           final sortedSubLessons = lesson.subLessons.toList();
           sortedSubLessons.sort((a, b) => a.periodIndex.compareTo(b.periodIndex));
           
@@ -94,11 +102,13 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
               subject: subLesson.subject.isNotEmpty ? subLesson.subject : 'Sub Lesson',
               subtitle: 'Period ${subLesson.periodIndex + 1} - Additional',
               body: subLesson.content.isNotEmpty ? subLesson.content : 'No description available',
-              color: subLesson.lessonColor ?? _getColorForPeriod(subLesson.periodIndex), // Use sub lesson's custom color if available
+              notes: subLesson.notes,
+              color: subLesson.lessonColor ?? _getColorForPeriod(subLesson.periodIndex),
               startHour: 8 + subLesson.periodIndex,
               startMinute: 0,
               finishHour: 9 + subLesson.periodIndex,
               finishMinute: 0,
+              periodIndex: subLesson.periodIndex,
               widthFactor: 1.0,
               attachmentIds: [],
               curriculumOutcomeIds: [],
@@ -111,11 +121,10 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
       }
 
       // Also load full week events for this day
-      final fullWeekEvents = widget.weeklyPlanData!.where((data) => 
+      final fullWeekEvents = _localWeeklyPlanData.where((data) => 
         data.dayIndex == widget.dayIndex && data.isFullWeekEvent
       ).toList();
 
-      // Sort full week events by period index too
       fullWeekEvents.sort((a, b) => a.periodIndex.compareTo(b.periodIndex));
 
       for (final fullWeekEvent in fullWeekEvents) {
@@ -123,25 +132,27 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           id: fullWeekEvent.lessonId.isNotEmpty ? fullWeekEvent.lessonId : UniqueKey().toString(),
           day: widget.day,
           subject: fullWeekEvent.subject.isNotEmpty ? fullWeekEvent.subject : 'Event',
-          subtitle: '', // No subtitle for full week events - just the event name
+          subtitle: '',
           body: fullWeekEvent.notes.isNotEmpty ? fullWeekEvent.notes : '',
-          color: Colors.orange.withOpacity(0.3), // Different color for full week events
+          notes: fullWeekEvent.notes,
+          color: Colors.orange.withOpacity(0.3),
           startHour: 8 + fullWeekEvent.periodIndex,
           startMinute: 0,
           finishHour: 9 + fullWeekEvent.periodIndex,
           finishMinute: 0,
+          periodIndex: fullWeekEvent.periodIndex,
           widthFactor: 1.0,
-          attachmentIds: [], // No attachments for full week events
-          curriculumOutcomeIds: [], // No curriculum outcomes for full week events
-          hyperlinks: [], // No hyperlinks for full week events
+          attachmentIds: [],
+          curriculumOutcomeIds: [],
+          hyperlinks: [],
           createdAt: fullWeekEvent.date ?? DateTime.now(),
           updatedAt: DateTime.now(),
-          isFullWeekEvent: true, // Mark this as a full week event
+          isFullWeekEvent: true,
         ));
       }
     }
 
-    // Also load from existing EventBlock data if no weekly plan data
+    // Fallback to existing EventBlock data if no weekly plan data
     if (lessons.isEmpty && widget.events.isNotEmpty) {
       lessons = widget.events.map((e) {
         return EnhancedEventBlock(
@@ -164,7 +175,6 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
         );
       }).toList();
       
-      // Sort lessons by start time for proper order
       lessons.sort((a, b) {
         final aTime = a.startHour * 60 + a.startMinute;
         final bTime = b.startHour * 60 + b.startMinute;
@@ -175,6 +185,13 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     setState(() {
       _enhancedEvents = lessons;
     });
+  }
+
+  void _saveChangesToWeeklyPlan() {
+    // Convert enhanced events back to weekly plan data and save
+    if (widget.onPlanDataChanged != null) {
+      widget.onPlanDataChanged!(_localWeeklyPlanData);
+    }
   }
 
   Color _getColorForPeriod(int periodIndex) {
@@ -486,38 +503,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                           ),
                         ),
                         
-                        Spacer(),
-                        
-                        // Time with improved typography
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: isTablet ? 12 : 10,
-                            vertical: isTablet ? 8 : 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[100],
-                            borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.schedule,
-                                size: isTablet ? 16 : 14,
-                                color: Colors.grey[600],
-                              ),
-                              SizedBox(width: 4),
-                              Text(
-                                '${event.startTime} - ${event.endTime}',
-                                style: TextStyle(
-                                  fontSize: isTablet ? 14 : 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        // Time display removed as requested
                       ],
                     ),
                     
@@ -605,12 +591,33 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   }
 
   void _editEvent(EnhancedEventBlock event) {
-    // TODO: Implement event editing functionality
-    // This could navigate to an edit event page or show a dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Edit functionality coming soon for ${event.subject}'),
-        duration: Duration(seconds: 2),
+    showDialog(
+      context: context,
+      builder: (context) => _EditLessonDialog(
+        event: event,
+        onSave: (updatedEvent) {
+          setState(() {
+            // Update the enhanced event
+            final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
+            if (idx != -1) _enhancedEvents[idx] = updatedEvent;
+            
+            // Update the weekly plan data
+            final planIdx = _localWeeklyPlanData.indexWhere((data) => 
+              data.lessonId == event.id && 
+              data.dayIndex == widget.dayIndex
+            );
+            if (planIdx != -1) {
+              _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(
+                content: updatedEvent.body,
+                notes: updatedEvent.notes,
+                // TODO: Add attachments and hyperlinks to WeeklyPlanData model
+              );
+              
+              // Save changes back to parent
+              _saveChangesToWeeklyPlan();
+            }
+          });
+        },
       ),
     );
   }
@@ -839,12 +846,28 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
             initialValue: event.body,
             onChanged: (value) {
               setState(() {
+                // Update the enhanced event
                 final updatedEvent = event.copyWith(
                   body: value,
                   updatedAt: DateTime.now(),
                 );
                 final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
                 if (idx != -1) _enhancedEvents[idx] = updatedEvent;
+                
+                // Update the weekly plan data
+                final planIdx = _localWeeklyPlanData.indexWhere((data) => 
+                  data.lessonId == event.id && 
+                  data.dayIndex == widget.dayIndex
+                );
+                if (planIdx != -1) {
+                  _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(
+                    content: value,
+                    notes: value, // Update notes as well
+                  );
+                  
+                  // Save changes back to parent
+                  _saveChangesToWeeklyPlan();
+                }
               });
             },
             style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(

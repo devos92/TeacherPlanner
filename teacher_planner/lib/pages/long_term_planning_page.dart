@@ -447,16 +447,24 @@ class _LongTermPlanningPageState extends State<LongTermPlanningPage> {
     
     showDialog(
       context: context,
-      barrierDismissible: false, // Prevent dismissing by tapping outside
+      barrierDismissible: true, // Allow dismissing by tapping outside
       builder: (context) => _CreatePlanDialog(
         onPlanCreated: (plan) {
+          // First close the dialog
+          Navigator.pop(context);
+          
+          // Then update state
           setState(() {
             _plans.add(plan);
             _showCurriculumSidebar = false; // Hide sidebar after creating plan
           });
+          
+          // Finally open the plan
           _openPlan(plan);
         },
         onCancel: () {
+          // Close dialog and hide sidebar
+          Navigator.pop(context);
           setState(() {
             _showCurriculumSidebar = false; // Hide sidebar if cancelled
           });
@@ -859,6 +867,6 @@ class _CreatePlanDialogState extends State<_CreatePlanDialog> {
     );
 
     widget.onPlanCreated(plan);
-    Navigator.pop(context);
+    // Navigator.pop is now handled by the parent callback
   }
 } 
