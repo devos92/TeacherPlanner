@@ -55,6 +55,17 @@ class _LongTermPlanningPageState extends State<LongTermPlanningPage> {
         ),
         elevation: 2,
         actions: [
+          // New Plan button
+          ElevatedButton.icon(
+            onPressed: () => _showCreatePlanDialog(),
+            icon: Icon(Icons.add, size: 18),
+            label: Text('New Plan'),
+            style: ElevatedButton.styleFrom(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              textStyle: TextStyle(fontSize: 14),
+            ),
+          ),
+          SizedBox(width: 8),
           IconButton(
             icon: Icon(Icons.school),
             onPressed: _toggleCurriculumSidebar,
@@ -76,12 +87,7 @@ class _LongTermPlanningPageState extends State<LongTermPlanningPage> {
       body: SafeArea(
         child: Row(
           children: [
-            // Main content
-            Expanded(
-              child: _isLoading ? _buildLoadingView() : _buildMainContent(),
-            ),
-            
-            // Curriculum sidebar
+            // Curriculum sidebar on the left
             if (_showCurriculumSidebar)
               SizedBox(
                 width: context.isTablet ? 350 : 300,
@@ -90,6 +96,11 @@ class _LongTermPlanningPageState extends State<LongTermPlanningPage> {
                   onSelectionChanged: _onCurriculumOutcomesChanged,
                 ),
               ),
+            
+            // Main content
+            Expanded(
+              child: _isLoading ? _buildLoadingView() : _buildMainContent(),
+            ),
           ],
         ),
       ),
@@ -111,20 +122,18 @@ class _LongTermPlanningPageState extends State<LongTermPlanningPage> {
   }
 
   void _onCurriculumOutcomesChanged(List<CurriculumData> outcomes) {
+    // Not used in simplified version - curriculum outcomes can be added later in the editor
     // Convert CurriculumData to CurriculumOutcome for consistency with the rest of the app
-    final newOutcomes = outcomes.map((outcome) => CurriculumOutcome(
-      id: outcome.id,
-      code: outcome.code ?? '',
-      description: outcome.description ?? '',
-      elaboration: outcome.elaboration ?? '',
-    )).toList();
+    // final newOutcomes = outcomes.map((outcome) => CurriculumOutcome(
+    //   id: outcome.id,
+    //   code: outcome.code ?? '',
+    //   description: outcome.description ?? '',
+    //   elaboration: outcome.elaboration ?? '',
+    // )).toList();
     
-    setState(() {
-      // For now, just show a message. This will be connected to plan creation later
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Selected ${newOutcomes.length} curriculum outcomes')),
-      );
-    });
+    // setState(() {
+    //   // Not needed for simplified plan creation
+    // });
   }
 
   Widget _buildLoadingView() {
@@ -431,18 +440,25 @@ class _LongTermPlanningPageState extends State<LongTermPlanningPage> {
   }
 
   void _showCreatePlanDialog() {
+    // Show curriculum sidebar when creating a plan
+    setState(() {
+      _showCurriculumSidebar = true;
+    });
+    
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevent dismissing by tapping outside
       builder: (context) => _CreatePlanDialog(
         onPlanCreated: (plan) {
           setState(() {
             _plans.add(plan);
+            _showCurriculumSidebar = false; // Hide sidebar after creating plan
           });
           _openPlan(plan);
         },
-        onShowCurriculumSidebar: () {
+        onCancel: () {
           setState(() {
-            _showCurriculumSidebar = true;
+            _showCurriculumSidebar = false; // Hide sidebar if cancelled
           });
         },
       ),
@@ -450,6 +466,11 @@ class _LongTermPlanningPageState extends State<LongTermPlanningPage> {
   }
 
   void _openPlan(LongTermPlan plan) {
+    // Hide curriculum sidebar when opening a plan
+    setState(() {
+      _showCurriculumSidebar = false;
+    });
+    
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -623,9 +644,12 @@ class _LongTermPlanningPageState extends State<LongTermPlanningPage> {
 // Create Plan Dialog
 class _CreatePlanDialog extends StatefulWidget {
   final Function(LongTermPlan) onPlanCreated;
-  final Function() onShowCurriculumSidebar;
+  final Function() onCancel;
 
-  const _CreatePlanDialog({required this.onPlanCreated, required this.onShowCurriculumSidebar});
+  const _CreatePlanDialog({
+    required this.onPlanCreated, 
+    required this.onCancel,
+  });
 
   @override
   State<_CreatePlanDialog> createState() => _CreatePlanDialogState();
@@ -636,9 +660,7 @@ class _CreatePlanDialogState extends State<_CreatePlanDialog> {
   final _descriptionController = TextEditingController();
   String _selectedSubject = '';
   String _selectedYearLevel = '';
-  PlanningTemplate _selectedTemplate = PlanningTemplate.blank;
   Color _selectedColor = const Color(0xFFA36361); // Default to first lesson color
-  List<String> _selectedOutcomes = [];
 
   final List<String> _subjects = [
     'Mathematics',
@@ -686,7 +708,7 @@ class _CreatePlanDialogState extends State<_CreatePlanDialog> {
     return AlertDialog(
       title: Text('Create New Plan'),
       content: Container(
-        width: isTablet ? 600 : double.maxFinite,
+        width: isTablet ? 500 : double.maxFinite, // Reduced width to leave space for sidebar
         constraints: BoxConstraints(
           maxHeight: MediaQuery.of(context).size.height * 0.8,
         ),
@@ -756,16 +778,6 @@ class _CreatePlanDialogState extends State<_CreatePlanDialog> {
               
               SizedBox(height: 16),
               
-              // Template Selection
-              Text(
-                'Choose Template',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
-              SizedBox(height: 8),
-              _buildTemplateSelector(),
-              
-              SizedBox(height: 16),
-              
               // Color Selection
               Text(
                 'Plan Color',
@@ -773,25 +785,16 @@ class _CreatePlanDialogState extends State<_CreatePlanDialog> {
               ),
               SizedBox(height: 8),
               _buildColorSelector(),
-              
-              SizedBox(height: 16),
-              
-              // Curriculum Outcomes Button
-              OutlinedButton.icon(
-                onPressed: widget.onShowCurriculumSidebar,
-                icon: Icon(Icons.school),
-                label: Text('Add Curriculum Outcomes (${_selectedOutcomes.length})'),
-                style: OutlinedButton.styleFrom(
-                  padding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                ),
-              ),
             ],
           ),
         ),
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            widget.onCancel();
+            Navigator.pop(context);
+          },
           child: Text('Cancel'),
         ),
         ElevatedButton(
@@ -800,27 +803,6 @@ class _CreatePlanDialogState extends State<_CreatePlanDialog> {
         ),
       ],
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    );
-  }
-
-  Widget _buildTemplateSelector() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: PlanningTemplate.values.map((template) {
-        final isSelected = _selectedTemplate == template;
-        return ChoiceChip(
-          label: Text(template.displayName),
-          selected: isSelected,
-          onSelected: (selected) {
-            if (selected) {
-              setState(() => _selectedTemplate = template);
-            }
-          },
-          avatar: isSelected ? null : Icon(template.icon, size: 18),
-          selectedColor: template.color.withOpacity(0.2),
-        );
-      }).toList(),
     );
   }
 
@@ -868,10 +850,10 @@ class _CreatePlanDialogState extends State<_CreatePlanDialog> {
       updatedAt: now,
       teacherId: 'current_teacher', // TODO: Get from auth
       color: _selectedColor,
-      curriculumOutcomeIds: _selectedOutcomes,
+      curriculumOutcomeIds: [], // Set to empty list as the dialog doesn't have access to parent state
       document: PlanningDocument(
         id: '${now.millisecondsSinceEpoch}_doc',
-        content: _selectedTemplate.templateContent,
+        content: '', // No template content for new plans
         lastModified: now,
       ),
     );

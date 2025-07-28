@@ -55,15 +55,18 @@ class _CurriculumSidebarState extends State<CurriculumSidebar> {
   }
 
   Future<void> _loadYears() async {
+    if (_isLoadingYear) return;
     setState(() => _isLoadingYear = true);
+    
     try {
       final years = await CurriculumService.getYears();
       setState(() {
         _years = years;
         _isLoadingYear = false;
       });
+      debugPrint('Loaded ${years.length} years');
     } catch (e) {
-      print('Error loading years: $e');
+      debugPrint('Error loading years: $e');
       setState(() => _isLoadingYear = false);
     }
   }

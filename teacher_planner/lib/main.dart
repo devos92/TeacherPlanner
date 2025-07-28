@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
 import 'services/supabase_service.dart';
 import 'pages/home_page.dart';
+import 'utils/responsive_utils.dart';
+import 'services/cache_service.dart';
+import 'services/lazy_loading_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,6 +27,10 @@ void main() async {
     debugPrint('❌ Error initializing Supabase: $e');
   }
   
+  // Initialize caching and lazy loading services
+  await CacheService.instance.initialize();
+  await LazyLoadingService.instance.initialize();
+
   runApp(MyApp());
 }
 
@@ -30,24 +39,36 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Teacher Planner',
+      debugShowCheckedModeBanner: false,
       theme: _buildAppTheme(),
       home: HomePage(),
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(
+            textScaleFactor: MediaQuery.of(context).textScaleFactor.clamp(0.8, 1.2),
+          ),
+          child: child!,
+        );
+      },
     );
   }
 
   ThemeData _buildAppTheme() {
     return ThemeData(
-      primarySwatch: Colors.blue,
       useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: Colors.blue,
+        brightness: Brightness.light,
+      ),
       
-      // Enhanced visual density for touch interfaces
+      // Enhanced visual density for better mobile experience
       visualDensity: VisualDensity.adaptivePlatformDensity,
       
-      // Responsive app bar theme
+      // Improved app bar theme
       appBarTheme: AppBarTheme(
         elevation: 2,
-        shadowColor: Colors.black12,
-        toolbarHeight: 64, // Slightly taller for better touch targets
+        centerTitle: true,
+        toolbarHeight: 64,
         titleTextStyle: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
@@ -55,124 +76,230 @@ class MyApp extends StatelessWidget {
         ),
         iconTheme: IconThemeData(
           color: Colors.white,
-          size: 24, // Standard touch-friendly icon size
+          size: 24,
         ),
         actionsIconTheme: IconThemeData(
           color: Colors.white,
-          size: 24,
+          size: 22,
         ),
       ),
       
       // Enhanced icon theme
       iconTheme: IconThemeData(
-        color: Colors.blue,
-        size: 24, // Standard size for mobile
+        size: 24,
+        color: Colors.grey[700],
       ),
       
-      // Improved button themes for touch interfaces
+      // Improved button themes
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          minimumSize: Size(88, 48), // Minimum touch target size
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          elevation: 2,
+          minimumSize: Size(120, 48),
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          textStyle: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
       
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          minimumSize: Size(64, 48),
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+          minimumSize: Size(100, 44),
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          textStyle: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
         ),
       ),
       
+      // Enhanced floating action button
       floatingActionButtonTheme: FloatingActionButtonThemeData(
-        sizeConstraints: BoxConstraints.tightFor(
-          width: 56,
-          height: 56,
-        ),
+        elevation: 6,
+        sizeConstraints: BoxConstraints.tightFor(width: 56, height: 56),
         iconSize: 24,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
       ),
       
-      // Enhanced bottom navigation bar
+      // Improved bottom navigation
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.blue,
-        unselectedItemColor: Colors.grey[600],
-        selectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
         elevation: 8,
+        selectedItemColor: Colors.blue[700],
+        unselectedItemColor: Colors.grey[600],
+        selectedLabelStyle: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+        ),
+        unselectedLabelStyle: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+        ),
       ),
       
-      // Responsive input decoration theme
+      // Enhanced input decoration
       inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.grey[50],
         contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
         ),
-        labelStyle: TextStyle(fontSize: 16),
-        hintStyle: TextStyle(fontSize: 16, color: Colors.grey[600]),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
+        ),
+        labelStyle: TextStyle(
+          color: Colors.grey[700],
+          fontSize: 16,
+        ),
+        hintStyle: TextStyle(
+          color: Colors.grey[500],
+          fontSize: 14,
+        ),
+        floatingLabelStyle: TextStyle(
+          color: Colors.blue[600],
+          fontSize: 14,
+        ),
       ),
       
-      // Card theme with appropriate elevation for mobile
+      // Enhanced card theme
       cardTheme: CardThemeData(
-        elevation: 2,
+        elevation: 4,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
         ),
         margin: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       ),
       
-      // Enhanced list tile theme
+      // Improved list tile theme
       listTileTheme: ListTileThemeData(
-        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         minVerticalPadding: 8,
-        minLeadingWidth: 24,
+        minLeadingWidth: 40,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
       
-      // Responsive dialog theme
+      // Enhanced dialog theme with responsive sizing
       dialogTheme: DialogThemeData(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
         elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
         titleTextStyle: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w600,
-          color: Colors.black87,
+          color: Colors.grey[900],
         ),
         contentTextStyle: TextStyle(
           fontSize: 16,
-          color: Colors.black87,
+          color: Colors.grey[700],
+          height: 1.4,
         ),
       ),
       
-      // Responsive and adaptive typography
+      // Comprehensive text theme with responsive scaling
       textTheme: TextTheme(
-        // Display styles - for large text
-        displayLarge: TextStyle(fontSize: 32, fontWeight: FontWeight.w300),
-        displayMedium: TextStyle(fontSize: 28, fontWeight: FontWeight.w300),
-        displaySmall: TextStyle(fontSize: 24, fontWeight: FontWeight.w400),
+        // Display styles
+        displayLarge: TextStyle(
+          fontSize: 32,
+          fontWeight: FontWeight.w300,
+          letterSpacing: -0.5,
+        ),
+        displayMedium: TextStyle(
+          fontSize: 28,
+          fontWeight: FontWeight.w400,
+          letterSpacing: 0,
+        ),
+        displaySmall: TextStyle(
+          fontSize: 24,
+          fontWeight: FontWeight.w400,
+          letterSpacing: 0,
+        ),
         
-        // Headline styles - for important headings
-        headlineLarge: TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
-        headlineMedium: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-        headlineSmall: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+        // Headline styles
+        headlineLarge: TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0,
+        ),
+        headlineMedium: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.15,
+        ),
+        headlineSmall: TextStyle(
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.15,
+        ),
         
-        // Title styles - for medium emphasis text
-        titleLarge: TextStyle(fontSize: 18, fontWeight: FontWeight.w500),
-        titleMedium: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-        titleSmall: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        // Title styles
+        titleLarge: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.15,
+        ),
+        titleMedium: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
+        titleSmall: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          letterSpacing: 0.1,
+        ),
         
-        // Body styles - for regular text
-        bodyLarge: TextStyle(fontSize: 16, fontWeight: FontWeight.w400),
-        bodyMedium: TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
-        bodySmall: TextStyle(fontSize: 12, fontWeight: FontWeight.w400),
+        // Body styles
+        bodyLarge: TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.w400,
+          letterSpacing: 0.5,
+        ),
+        bodyMedium: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w400,
+          letterSpacing: 0.25,
+        ),
+        bodySmall: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w400,
+          letterSpacing: 0.4,
+        ),
         
-        // Label styles - for smaller text
-        labelLarge: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        labelMedium: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-        labelSmall: TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+        // Label styles
+        labelLarge: TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.1,
+        ),
+        labelMedium: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.5,
+        ),
+        labelSmall: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }

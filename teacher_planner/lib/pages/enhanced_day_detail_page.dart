@@ -352,7 +352,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                       
                       // Lessons List
                       if (_enhancedEvents.isNotEmpty) ...[
-                        ..._enhancedEvents.map((event) => _buildLessonCard(event, theme, isMobile, isTablet, isDesktop)).toList(),
+                        ..._enhancedEvents.map((event) => _buildEventItem(event, _enhancedEvents.indexOf(event))).toList(),
                       ] else ...[
                         // Empty State
                         Container(
@@ -410,6 +410,238 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildEventItem(EnhancedEventBlock event, int index) {
+    final isTablet = MediaQuery.of(context).size.width > 768;
+    
+    return Container(
+      margin: EdgeInsets.only(
+        bottom: isTablet ? 16 : 12,
+        left: isTablet ? 20 : 16,
+        right: isTablet ? 20 : 16,
+      ),
+      child: Material(
+        elevation: 0,
+        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+            border: Border.all(
+              color: event.color.withOpacity(0.3),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.04),
+                blurRadius: 12,
+                offset: Offset(0, 4),
+                spreadRadius: 0,
+              ),
+              BoxShadow(
+                color: event.color.withOpacity(0.08),
+                blurRadius: 24,
+                offset: Offset(0, 8),
+                spreadRadius: 0,
+              ),
+            ],
+          ),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _editEvent(event),
+              borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+              child: Container(
+                padding: EdgeInsets.all(isTablet ? 20 : 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header with period and time
+                    Row(
+                      children: [
+                        // Period badge with modern design
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 12 : 10,
+                            vertical: isTablet ? 8 : 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: event.color.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
+                            border: Border.all(
+                              color: event.color.withOpacity(0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            'Period ${event.periodIndex + 1}',
+                            style: TextStyle(
+                              color: event.color,
+                              fontSize: isTablet ? 14 : 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                        
+                        Spacer(),
+                        
+                        // Time with improved typography
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: isTablet ? 12 : 10,
+                            vertical: isTablet ? 8 : 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.schedule,
+                                size: isTablet ? 16 : 14,
+                                color: Colors.grey[600],
+                              ),
+                              SizedBox(width: 4),
+                              Text(
+                                '${event.startTime} - ${event.endTime}',
+                                style: TextStyle(
+                                  fontSize: isTablet ? 14 : 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.grey[700],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    SizedBox(height: isTablet ? 16 : 12),
+                    
+                    // Subject with better typography hierarchy
+                    Text(
+                      event.subject,
+                      style: TextStyle(
+                        fontSize: isTablet ? 22 : 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey[900],
+                        height: 1.2,
+                      ),
+                    ),
+                    
+                    if (event.notes.isNotEmpty) ...[
+                      SizedBox(height: isTablet ? 12 : 8),
+                      Text(
+                        event.notes,
+                        style: TextStyle(
+                          fontSize: isTablet ? 16 : 14,
+                          color: Colors.grey[600],
+                          height: 1.4,
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                    
+                    // Enhanced metadata section
+                    if (event.attachments.isNotEmpty || event.hyperlinks.isNotEmpty || event.curriculumOutcomes.isNotEmpty) ...[
+                      SizedBox(height: isTablet ? 16 : 12),
+                      Container(
+                        padding: EdgeInsets.all(isTablet ? 16 : 12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(isTablet ? 12 : 8),
+                          border: Border.all(
+                            color: Colors.grey[200]!,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            if (event.attachments.isNotEmpty)
+                              _buildMetadataRow(
+                                Icons.attach_file,
+                                '${event.attachments.length} attachment${event.attachments.length > 1 ? 's' : ''}',
+                                Colors.blue[600]!,
+                                isTablet,
+                              ),
+                            
+                            if (event.hyperlinks.isNotEmpty) ...[
+                              if (event.attachments.isNotEmpty) SizedBox(height: 8),
+                              _buildMetadataRow(
+                                Icons.link,
+                                '${event.hyperlinks.length} link${event.hyperlinks.length > 1 ? 's' : ''}',
+                                Colors.green[600]!,
+                                isTablet,
+                              ),
+                            ],
+                            
+                            if (event.curriculumOutcomes.isNotEmpty) ...[
+                              if (event.attachments.isNotEmpty || event.hyperlinks.isNotEmpty) SizedBox(height: 8),
+                              _buildMetadataRow(
+                                Icons.school,
+                                '${event.curriculumOutcomes.length} outcome${event.curriculumOutcomes.length > 1 ? 's' : ''}',
+                                Colors.purple[600]!,
+                                isTablet,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _editEvent(EnhancedEventBlock event) {
+    // TODO: Implement event editing functionality
+    // This could navigate to an edit event page or show a dialog
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Edit functionality coming soon for ${event.subject}'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Widget _buildMetadataRow(IconData icon, String text, Color color, bool isTablet) {
+    return Row(
+      children: [
+        Container(
+          padding: EdgeInsets.all(isTablet ? 8 : 6),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
+          ),
+          child: Icon(
+            icon,
+            size: isTablet ? 18 : 16,
+            color: color,
+          ),
+        ),
+        SizedBox(width: isTablet ? 12 : 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: isTablet ? 14 : 12,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[700],
+            ),
+          ),
+        ),
+      ],
     );
   }
 

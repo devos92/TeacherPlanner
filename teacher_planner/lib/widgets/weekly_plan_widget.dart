@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import '../models/weekly_plan_data.dart';
 import '../widgets/lesson_dialogs.dart';
 import '../widgets/lesson_cell_widgets.dart';
@@ -11,7 +12,8 @@ class WeeklyPlanWidget extends StatefulWidget {
   final Function(int dayIndex)? onDayTap;
   final DateTime? weekStartDate;
   final VoidCallback? onAddFullWeekEvent;
-
+  final Function(List<WeeklyPlanData>) onPlanChanged;
+  
   const WeeklyPlanWidget({
     Key? key,
     required this.periods,
@@ -20,14 +22,17 @@ class WeeklyPlanWidget extends StatefulWidget {
     this.onDayTap, 
     this.weekStartDate,
     this.onAddFullWeekEvent,
+    required this.onPlanChanged,
   }) : super(key: key);
 
   @override
-  State<WeeklyPlanWidget> createState() => WeeklyPlanWidgetState();
+  WeeklyPlanWidgetState createState() => WeeklyPlanWidgetState();
 }
 
 class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
-  late List<WeeklyPlanData> _planData;
+  List<WeeklyPlanData> _planData = [];
+  bool _isHorizontalView = false;
+  DateTime _currentWeek = DateTime.now();
   int _nextLessonId = 1;
 
   List<WeeklyPlanData> get planData => _planData;
@@ -272,23 +277,201 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenSize = MediaQuery.of(context).size;
-    final isTablet = screenSize.width > 600;
+    final isTablet = MediaQuery.of(context).size.width > 768;
+    final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
     
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.white, Colors.grey.shade50],
-        ),
+    return Scaffold(
+      body: Column(
+        children: [
+          // Improved header with better spacing and typography
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 24 : 16,
+              vertical: isTablet ? 16 : 12,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.grey[200]!,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                // Week navigation with better touch targets
+                Container(
+                  padding: EdgeInsets.all(isTablet ? 12 : 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: InkWell(
+                    onTap: _previousWeek,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Icon(
+                      Icons.chevron_left,
+                      size: isTablet ? 28 : 24,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+                
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _showWeekPicker,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        vertical: isTablet ? 12 : 8,
+                        horizontal: 16,
+                      ),
+                      child: Text(
+                        _getWeekText(),
+                        style: TextStyle(
+                          fontSize: isTablet ? 20 : 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[800],
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ),
+                
+                Container(
+                  padding: EdgeInsets.all(isTablet ? 12 : 8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: InkWell(
+                    onTap: _nextWeek,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Icon(
+                      Icons.chevron_right,
+                      size: isTablet ? 28 : 24,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Enhanced view toggle with Material You design
+          Container(
+            margin: EdgeInsets.symmetric(
+              horizontal: isTablet ? 24 : 16,
+              vertical: isTablet ? 16 : 12,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isHorizontalView = false),
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 200),
+                      padding: EdgeInsets.symmetric(
+                        vertical: isTablet ? 16 : 12,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: !_isHorizontalView ? Colors.blue[600] : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.view_agenda,
+                            color: !_isHorizontalView ? Colors.white : Colors.grey[600],
+                            size: isTablet ? 22 : 18,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Vertical',
+                            style: TextStyle(
+                              color: !_isHorizontalView ? Colors.white : Colors.grey[600],
+                              fontWeight: FontWeight.w600,
+                              fontSize: isTablet ? 16 : 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isHorizontalView = true),
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 200),
+                      padding: EdgeInsets.symmetric(
+                        vertical: isTablet ? 16 : 12,
+                        horizontal: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _isHorizontalView ? Colors.blue[600] : Colors.transparent,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.view_day,
+                            color: _isHorizontalView ? Colors.white : Colors.grey[600],
+                            size: isTablet ? 22 : 18,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Horizontal',
+                            style: TextStyle(
+                              color: _isHorizontalView ? Colors.white : Colors.grey[600],
+                              fontWeight: FontWeight.w600,
+                              fontSize: isTablet ? 16 : 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // Main content with gesture detection
+          Expanded(
+            child: GestureDetector(
+              onHorizontalDragEnd: (details) {
+                // Swipe navigation between weeks (inspired by modern apps)
+                if (details.primaryVelocity != null) {
+                  if (details.primaryVelocity! > 0) {
+                    _previousWeek(); // Swipe right = previous week
+                    HapticFeedback.lightImpact();
+                  } else if (details.primaryVelocity! < 0) {
+                    _nextWeek(); // Swipe left = next week
+                    HapticFeedback.lightImpact();
+                  }
+                }
+              },
+              child: _isHorizontalView ? _buildHorizontalView() : _buildVerticalView(),
+            ),
+          ),
+        ],
       ),
-      child: widget.isVerticalLayout 
-        ? _buildVerticalLayout(theme, isTablet, screenSize) 
-        : _buildHorizontalLayout(theme, isTablet, screenSize),
     );
   }
 
@@ -914,6 +1097,68 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
 
   void addFullWeekEvent() {
     // Keep the existing full week event implementation
+  }
+
+  void _previousWeek() {
+    setState(() {
+      _currentWeek = _currentWeek.subtract(Duration(days: 7));
+      _loadWeeklyPlan();
+    });
+  }
+
+  void _nextWeek() {
+    setState(() {
+      _currentWeek = _currentWeek.add(Duration(days: 7));
+      _loadWeeklyPlan();
+    });
+  }
+
+  void _loadWeeklyPlan() {
+    // TODO: Load actual weekly plan data for the current week
+    try {
+      debugPrint('Loading weekly plan for week starting: ${_getWeekText()}');
+      // Here you would typically load data from storage/database
+      // For now, we just trigger a rebuild with existing data
+      setState(() {
+        // Refresh the plan data if needed
+        widget.onPlanChanged(_planData);
+      });
+    } catch (e) {
+      debugPrint('Error loading weekly plan: $e');
+    }
+  }
+
+  void _showWeekPicker() {
+    // TODO: Implement week picker dialog
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Week picker coming soon')),
+    );
+  }
+
+  String _getWeekText() {
+    final startOfWeek = _currentWeek.subtract(Duration(days: _currentWeek.weekday - 1));
+    final endOfWeek = startOfWeek.add(Duration(days: 6));
+    return '${_formatDate(startOfWeek)} - ${_formatDate(endOfWeek)}';
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  Widget _buildHorizontalView() {
+    final theme = Theme.of(context);
+    final isTablet = MediaQuery.of(context).size.width > 768;
+    final screenSize = MediaQuery.of(context).size;
+    
+    return _buildHorizontalLayout(theme, isTablet, screenSize);
+  }
+
+  Widget _buildVerticalView() {
+    final theme = Theme.of(context);
+    final isTablet = MediaQuery.of(context).size.width > 768;
+    final screenSize = MediaQuery.of(context).size;
+    
+    return _buildVerticalLayout(theme, isTablet, screenSize);
   }
 }
 

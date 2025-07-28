@@ -54,4 +54,41 @@ class WeeklyPlanData {
       lessonColor: lessonColor ?? this.lessonColor,
     );
   }
+
+  // JSON serialization for caching
+  Map<String, dynamic> toJson() {
+    return {
+      'dayIndex': dayIndex,
+      'periodIndex': periodIndex,
+      'content': content,
+      'subject': subject,
+      'notes': notes,
+      'lessonId': lessonId,
+      'date': date?.toIso8601String(),
+      'isLesson': isLesson,
+      'isFullWeekEvent': isFullWeekEvent,
+      'subLessons': subLessons.map((e) => e.toJson()).toList(),
+      'lessonColor': lessonColor?.value,
+    };
+  }
+
+  factory WeeklyPlanData.fromJson(Map<String, dynamic> json) {
+    return WeeklyPlanData(
+      dayIndex: json['dayIndex'] as int,
+      periodIndex: json['periodIndex'] as int,
+      content: json['content'] as String? ?? '',
+      subject: json['subject'] as String? ?? '',
+      notes: json['notes'] as String? ?? '',
+      lessonId: json['lessonId'] as String? ?? '',
+      date: json['date'] != null ? DateTime.parse(json['date']) : null,
+      isLesson: json['isLesson'] as bool? ?? false,
+      isFullWeekEvent: json['isFullWeekEvent'] as bool? ?? false,
+      subLessons: (json['subLessons'] as List<dynamic>? ?? [])
+          .map((e) => WeeklyPlanData.fromJson(e as Map<String, dynamic>))
+          .toList(),
+      lessonColor: json['lessonColor'] != null 
+          ? Color(json['lessonColor'] as int)
+          : null,
+    );
+  }
 } 

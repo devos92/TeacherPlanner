@@ -1,35 +1,58 @@
 name: teacher_planner
-description: A comprehensive teacher planning application with curriculum integration and file management.
+description: A teacher planning application with weekly schedules, term planning, and enhanced features.
 
 publish_to: "none"
 
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
+  sdk: ">=3.1.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  http: ^1.1.0
-  supabase_flutter: ^2.3.4
+
+  # Core dependencies
+  cupertino_icons: ^1.0.6
+
+  # State management and utilities
   provider: ^6.1.1
-  path_provider: ^2.1.2
+
+  # Database and caching
   shared_preferences: ^2.2.2
-  file_picker: ^6.1.1
+  path_provider: ^2.1.1
+  sqflite: ^2.3.0
+  supabase_flutter: ^2.3.4
+
+  # Networking and images
+  http: ^1.1.0
+  image_picker: ^1.0.4
+  cached_network_image: ^3.3.0
+
+  # File handling and storage
   path: ^1.8.3
-  # PDF and sharing dependencies
+  file_picker: ^6.1.1
+
+  # PDF and document handling
   pdf: ^3.10.7
+  printing: ^5.11.0
   share_plus: ^7.2.1
-  image_picker: ^1.0.7
-  permission_handler: ^11.3.0
-  # Responsive design
-  responsive_framework: ^1.1.1
+
+  # UI and animations
+  flutter_staggered_animations: ^1.1.1
+  shimmer: ^3.0.0
+
+  # Date and time utilities
+  intl: ^0.19.0
+  table_calendar: ^3.0.9
+
+  # Development and debugging
+  flutter_launcher_icons: ^0.13.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^3.0.0
 
 flutter:
   uses-material-design: true

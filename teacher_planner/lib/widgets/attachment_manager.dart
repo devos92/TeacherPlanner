@@ -106,29 +106,27 @@ class _AttachmentManagerState extends State<AttachmentManager> {
 
   Widget _buildAttachmentTile(Attachment attachment, ThemeData theme) {
     return ListTile(
-      leading: _getAttachmentIcon(attachment.type, theme),
+      leading: _getAttachmentIcon(AttachmentType.document, theme), // Use enum instead of string
       title: Text(
         attachment.name,
-        style: theme.textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w500,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
         ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
       ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            _formatFileSize(attachment.size),
-            style: theme.textTheme.bodySmall,
-            overflow: TextOverflow.ellipsis,
+            '${(attachment.size / 1024).toStringAsFixed(1)} KB',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
           Text(
-            'Uploaded ${_formatDate(attachment.uploadedAt)}',
+            'Uploaded ${_formatDate(attachment.createdAt)}', // Use createdAt instead of uploadedAt
             style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTheme.bodySmall?.color?.withOpacity(0.7),
+              color: theme.colorScheme.onSurfaceVariant.withOpacity(0.8),
             ),
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -217,20 +215,13 @@ class _AttachmentManagerState extends State<AttachmentManager> {
       );
 
       if (result != null && result.files.isNotEmpty) {
-        final file = File(result.files.first.path!);
-        final fileName = result.files.first.name;
-
-        // Upload file
-        // final url = await _storageService.uploadFile(file, widget.folder); // This line was removed
-
-        // Create attachment object
         final attachment = Attachment(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
-          name: fileName,
-          url: 'placeholder_url', // Placeholder for now
-          type: _getAttachmentType(fileName),
-          uploadedAt: DateTime.now(),
-          size: await file.length(), // Add the missing size parameter
+          name: result.files.first.name,
+          path: result.files.first.path ?? '',
+          type: result.files.first.extension ?? 'unknown',
+          size: result.files.first.size,
+          createdAt: DateTime.now(),
         );
 
         // Add to attachments list
@@ -303,7 +294,7 @@ class _AttachmentManagerState extends State<AttachmentManager> {
           children: [
             Text('Type: ${attachment.type.toString().split('.').last}'),
             Text('Size: ${_formatFileSize(attachment.size)}'),
-            Text('Uploaded: ${_formatDate(attachment.uploadedAt)}'),
+            Text('Uploaded: ${_formatDate(attachment.createdAt)}'),
             SizedBox(height: 16),
             Text('Preview not yet implemented for this file type.'),
           ],

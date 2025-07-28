@@ -24,26 +24,13 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Get screen information for responsive design
-    final mediaQuery = MediaQuery.of(context);
-    final screenWidth = mediaQuery.size.width;
-    final isTablet = screenWidth > 768;
-    final isLandscape = mediaQuery.orientation == Orientation.landscape;
+    final isTablet = MediaQuery.of(context).size.width > 768;
     
     return Scaffold(
-      // Use SafeArea to handle notches and status bars
-      body: SafeArea(
-        child: _pages[_currentIndex],
-      ),
-      
+      body: _pages[_currentIndex],
       bottomNavigationBar: _buildBottomNavigation(isTablet),
-      
-      floatingActionButton: _buildFloatingActionButton(context, isTablet),
-      
-      // Position FAB for better thumb reach on mobile
-      floatingActionButtonLocation: isTablet 
-        ? FloatingActionButtonLocation.endFloat
-        : FloatingActionButtonLocation.endFloat,
+      floatingActionButton: _buildSmartFAB(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 
@@ -137,34 +124,200 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildFloatingActionButton(BuildContext context, bool isTablet) {
-    return FloatingActionButton.extended(
-      onPressed: () => _navigateToEnhancedDetail(context),
-      
-      // Adaptive sizing
-      icon: Icon(
-        Icons.edit_note,
-        size: isTablet ? 24 : 20,
-      ),
-      
-      label: Text(
-        'Quick Edit',
-        style: TextStyle(
-          fontSize: isTablet ? 16 : 14,
-          fontWeight: FontWeight.w500,
+  Widget _buildSmartFAB() {
+    final isTablet = MediaQuery.of(context).size.width > 768;
+    
+    return Container(
+      margin: EdgeInsets.only(top: 30),
+      child: FloatingActionButton.extended(
+        onPressed: _showQuickActionsSheet,
+        backgroundColor: Colors.blue[600],
+        foregroundColor: Colors.white,
+        elevation: 8,
+        extendedPadding: EdgeInsets.symmetric(
+          horizontal: isTablet ? 24 : 20,
+        ),
+        icon: Icon(
+          Icons.add,
+          size: isTablet ? 28 : 24,
+        ),
+        label: Text(
+          'Quick Add',
+          style: TextStyle(
+            fontSize: isTablet ? 16 : 14,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.5,
+          ),
         ),
       ),
-      
-      tooltip: 'Quick access to enhanced day detail editor',
-      heroTag: 'enhanced_day_detail',
-      
-      // Better elevation for mobile
-      elevation: 6,
-      highlightElevation: 8,
     );
   }
 
-  void _navigateToEnhancedDetail(BuildContext context) {
+  void _showQuickActionsSheet() {
+    final isTablet = MediaQuery.of(context).size.width > 768;
+    
+    HapticFeedback.lightImpact();
+    
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(isTablet ? 24 : 20),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 20,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: EdgeInsets.only(top: 12),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              
+              Padding(
+                padding: EdgeInsets.all(isTablet ? 24 : 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Quick Actions',
+                      style: TextStyle(
+                        fontSize: isTablet ? 24 : 20,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.grey[900],
+                      ),
+                    ),
+                    
+                    SizedBox(height: isTablet ? 24 : 20),
+                    
+                    // Quick action buttons
+                    GridView.count(
+                      shrinkWrap: true,
+                      crossAxisCount: 2,
+                      crossAxisSpacing: isTablet ? 16 : 12,
+                      mainAxisSpacing: isTablet ? 16 : 12,
+                      childAspectRatio: 2.5,
+                      physics: NeverScrollableScrollPhysics(),
+                      children: [
+                        _buildQuickActionButton(
+                          'Add Lesson',
+                          Icons.school,
+                          Colors.blue[600]!,
+                          () {
+                            Navigator.pop(context);
+                            _navigateToEnhancedDetail();
+                          },
+                          isTablet,
+                        ),
+                        _buildQuickActionButton(
+                          'Plan Week',
+                          Icons.calendar_view_week,
+                          Colors.green[600]!,
+                          () {
+                            Navigator.pop(context);
+                            setState(() => _currentIndex = 1);
+                          },
+                          isTablet,
+                        ),
+                        _buildQuickActionButton(
+                          'Term Events',
+                          Icons.event,
+                          Colors.orange[600]!,
+                          () {
+                            Navigator.pop(context);
+                            setState(() => _currentIndex = 2);
+                          },
+                          isTablet,
+                        ),
+                        _buildQuickActionButton(
+                          'Long-term Plan',
+                          Icons.description,
+                          Colors.purple[600]!,
+                          () {
+                            Navigator.pop(context);
+                            setState(() => _currentIndex = 3);
+                          },
+                          isTablet,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton(
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+    bool isTablet,
+  ) {
+    return Material(
+      elevation: 0,
+      borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          onTap();
+        },
+        borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+        child: Container(
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
+            border: Border.all(
+              color: color.withOpacity(0.3),
+              width: 1,
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: color,
+                size: isTablet ? 24 : 20,
+              ),
+              SizedBox(width: isTablet ? 12 : 8),
+              Text(
+                title,
+                style: TextStyle(
+                  color: color,
+                  fontSize: isTablet ? 16 : 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _navigateToEnhancedDetail() {
     // Add haptic feedback
     HapticFeedback.mediumImpact();
     

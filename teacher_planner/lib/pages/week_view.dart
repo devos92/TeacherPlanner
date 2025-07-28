@@ -159,6 +159,12 @@ class _WeekViewState extends State<WeekView> {
       onDayTap: _navigateToDayDetail, // Add navigation callback
       weekStartDate: _weekStartDate, // Pass the week start date
       onAddFullWeekEvent: _addFullWeekEvent, // Add full week event callback
+      onPlanChanged: (planData) {
+        // Handle plan changes here
+        setState(() {
+          // Update any local state if needed
+        });
+      },
       key: _weeklyPlanKey, // Assign the key
     );
   }

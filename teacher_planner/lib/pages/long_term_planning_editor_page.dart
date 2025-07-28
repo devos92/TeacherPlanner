@@ -27,7 +27,7 @@ class _LongTermPlanningEditorPageState extends State<LongTermPlanningEditorPage>
   bool _isEditing = true;
   bool _hasUnsavedChanges = false;
   bool _isSaving = false;
-  bool _showCurriculumSidebar = false;
+  bool _showCurriculumSidebar = true; // Show by default when editing a plan
   String _selectedFont = 'Default';
   double _fontSize = 16.0;
   bool _isBold = false;
@@ -83,12 +83,7 @@ class _LongTermPlanningEditorPageState extends State<LongTermPlanningEditorPage>
         body: SafeArea(
           child: Row(
             children: [
-              // Main editor content
-              Expanded(
-                child: _buildEditorContent(isTablet),
-              ),
-              
-              // Curriculum sidebar
+              // Curriculum sidebar on the left
               if (_showCurriculumSidebar)
                 SizedBox(
                   width: context.isTablet ? 350 : 300,
@@ -97,6 +92,11 @@ class _LongTermPlanningEditorPageState extends State<LongTermPlanningEditorPage>
                     onSelectionChanged: _onCurriculumOutcomesChanged,
                   ),
                 ),
+              
+              // Main editor content
+              Expanded(
+                child: _buildEditorContent(isTablet),
+              ),
             ],
           ),
         ),

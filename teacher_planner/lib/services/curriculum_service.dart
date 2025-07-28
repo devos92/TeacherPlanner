@@ -69,7 +69,7 @@ class CurriculumService {
         .select('subject_id')
         .eq('level_id', int.parse(levelId))
         .not('subject_id', 'is', null);
-
+     
       // Get unique subject IDs
       final subjectIds = (response as List)
         .map((e) => e['subject_id'] as int)
@@ -131,7 +131,7 @@ class CurriculumService {
         .eq('level_id', int.parse(levelId))
         .not('strand_id', 'is', null)
         .limit(20);
-
+     
       // Create a map to ensure unique strands by ID
       final Map<String, Map<String, dynamic>> uniqueStrands = {};
       
@@ -263,7 +263,7 @@ class CurriculumService {
         .eq('level_id', int.parse(levelId))
         .not('sub_strand_id', 'is', null)
         .limit(20);
-
+     
       // Create a map to ensure unique sub-strands by ID
       final Map<String, Map<String, dynamic>> uniqueSubStrands = {};
       
@@ -351,32 +351,30 @@ class CurriculumService {
     }
   }
 
-  /// Fetch outcomes by list of IDs (codes) - for selected outcomes
-  static Future<List<CurriculumData>> getOutcomesByIds(List<String> codes) async {
-    if (codes.isEmpty) return [];
-    
+  /// Search functionality
+  static Future<List<CurriculumData>> searchOutcomes(String query) async {
     try {
+      print('CurriculumService: Searching outcomes for: $query');
       final response = await _supabase
         .from('curriculum')
         .select('''
           code,
           content_description,
-          elaboration,
           subject:subject(name),
           strand:strand(name),
           level:level(name)
         ''')
-        .inFilter('code', codes);
+        .ilike('content_description', '%$query%')
+        .limit(50);
 
       return (response as List)
         .map((e) {
           final description = e['content_description']?.toString() ?? '';
           return CurriculumData(
             id: e['code'],
-            name: description.isNotEmpty ? description : (e['code'] ?? 'No description'),
+            name: description.isNotEmpty ? description : 'No description available',
             code: e['code'],
             description: description.isNotEmpty ? description : null,
-            elaboration: e['elaboration'],
             yearLevel: e['level']?['name'],
             subjectCode: e['subject']?['name'],
             strandId: e['strand']?['name'],
@@ -384,90 +382,8 @@ class CurriculumService {
         })
         .toList();
     } catch (e) {
-      print('CurriculumService: Error fetching outcomes by IDs: $e');
+      print('CurriculumService: Error searching outcomes: $e');
       return [];
-    }
-  }
-
-  /// Helper method to get a display name from curriculum data
-  static String _getDisplayName(Map<String, dynamic> data) {
-    // Since content_description and elaboration are null, create readable descriptions from codes
-    if (data['code'] != null && data['code'].toString().isNotEmpty) {
-      final code = data['code'].toString();
-      
-      // Parse Australian Curriculum codes to create readable descriptions
-      if (code.startsWith('AC')) {
-        // Australian Curriculum code format: AC9EFLA01
-        // AC = Australian Curriculum
-        // 9 = Version 9
-        // EF = English Foundation
-        // LA = Language
-        // 01 = Outcome number
-        
-        if (code.length >= 8) {
-          final subjectCode = code.substring(4, 6); // EF, MA, SC, etc.
-          final strandCode = code.substring(6, 8); // LA, LI, NU, etc.
-          final outcomeNum = code.substring(8); // 01, 02, etc.
-          
-          // Map subject codes to readable names
-          final subjectNames = {
-            'EF': 'English Foundation',
-            'E1': 'English Year 1',
-            'E2': 'English Year 2',
-            'E3': 'English Year 3',
-            'E4': 'English Year 4',
-            'E5': 'English Year 5',
-            'E6': 'English Year 6',
-            'MF': 'Mathematics Foundation',
-            'M1': 'Mathematics Year 1',
-            'M2': 'Mathematics Year 2',
-            'M3': 'Mathematics Year 3',
-            'M4': 'Mathematics Year 4',
-            'M5': 'Mathematics Year 5',
-            'M6': 'Mathematics Year 6',
-            'SF': 'Science Foundation',
-            'S1': 'Science Year 1',
-            'S2': 'Science Year 2',
-            'S3': 'Science Year 3',
-            'S4': 'Science Year 4',
-            'S5': 'Science Year 5',
-            'S6': 'Science Year 6',
-          };
-          
-          // Map strand codes to readable names
-          final strandNames = {
-            'LA': 'Language',
-            'LI': 'Literature',
-            'NU': 'Number',
-            'AL': 'Algebra',
-            'ME': 'Measurement',
-            'SP': 'Space',
-            'ST': 'Statistics',
-            'PR': 'Probability',
-            'SU': 'Science Understanding',
-            'SI': 'Science Inquiry',
-            'SH': 'Science as Human Endeavour',
-          };
-          
-          final subjectName = subjectNames[subjectCode] ?? subjectCode;
-          final strandName = strandNames[strandCode] ?? strandCode;
-          
-          return '$subjectName - $strandName Outcome $outcomeNum';
-        } else {
-          return 'Australian Curriculum: $code';
-        }
-      } else if (code.startsWith('ENGENGFY')) {
-        // English Foundation Year codes
-        return 'English Foundation - Language Outcome';
-      } else if (code.startsWith('ENGENGFYLANG')) {
-        // English Foundation Language codes
-        return 'English Foundation - Language Development';
-      } else {
-        // Generic curriculum code
-        return 'Curriculum Outcome: $code';
-      }
-    } else {
-      return 'No description available';
     }
   }
 }
