@@ -7,6 +7,7 @@ import 'term_planner_page.dart';
 import 'day_view.dart';
 import 'enhanced_day_detail_page.dart';
 import 'long_term_planning_page.dart';
+import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -27,11 +28,42 @@ class _HomePageState extends State<HomePage> {
     final isTablet = MediaQuery.of(context).size.width > 768;
     
     return Scaffold(
+      appBar: AppBar(
+        title: Text(_getPageTitle()),
+        backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsPage()),
+              );
+            },
+            tooltip: 'Settings',
+          ),
+        ],
+      ),
       body: _pages[_currentIndex],
       bottomNavigationBar: _buildBottomNavigation(isTablet),
       floatingActionButton: _buildSmartFAB(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
+  }
+
+  String _getPageTitle() {
+    switch (_currentIndex) {
+      case 0:
+        return 'Term Planner';
+      case 1:
+        return 'Weekly Plan';
+      case 2:
+        return 'Daily View';
+      case 3:
+        return 'Long Term Planning';
+      default:
+        return 'Teacher Planner';
+    }
   }
 
   Widget _buildBottomNavigation(bool isTablet) {

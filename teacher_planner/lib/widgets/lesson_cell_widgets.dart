@@ -4,11 +4,11 @@ import '../models/weekly_plan_data.dart';
 class LessonCellWidgets {
   // Day colors for visual distinction
   static const List<Color> _dayColors = [
-    Color(0xA3A380), // Monday - Light Purple
-    Color(0xD7CE93), // Tuesday - Light Orange
-    Color(0xEFEBCE), // Wednesday - Light Green
-    Color(0xD8A48F), // Thursday - Light Pink
-    Color(0xBB8588), // Friday - Light Teal
+    Color(0xFFA3A380), // Monday - Solid Light Purple
+    Color(0xFFD7CE93), // Tuesday - Solid Light Orange
+    Color(0xFFEFEBCE), // Wednesday - Solid Light Green
+    Color(0xFFD8A48F), // Thursday - Solid Light Pink
+    Color(0xFFBB8588), // Friday - Solid Light Teal
   ];
 
   // Helper method to get the effective color for a lesson
