@@ -252,12 +252,11 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
 
   Widget _buildCellContent(WeeklyPlanData data, ThemeData theme, int dayIndex) {
     if (data.isFullWeekEvent) {
-      return LessonCellWidgets.buildEmptyCell(
+      return LessonCellWidgets.buildDraggableLesson(
         data: data,
         theme: theme,
-        dayIndex: dayIndex,
-        onTap: () => _addLesson(data),
-        planData: _planData,
+        onEdit: () => _editPlanCell(data),
+        onDelete: () => _deleteLesson(data),
       );
     }
     
@@ -1232,9 +1231,9 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
   void _createFullWeekEvent(String eventName, int periodIndex) {
     setState(() {
       // Add the event to all 5 weekdays
-                    for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
-                      _planData.add(WeeklyPlanData(
-                        dayIndex: dayIndex,
+      for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
+        _planData.add(WeeklyPlanData(
+          dayIndex: dayIndex,
           periodIndex: periodIndex,
           content: eventName,
           subject: eventName,
@@ -1242,7 +1241,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
           lessonId: 'fullweek_${eventName.toLowerCase()}_${periodIndex}_$dayIndex',
           date: widget.weekStartDate?.add(Duration(days: dayIndex)) ?? DateTime.now(),
           isLesson: false,
-                        isFullWeekEvent: true,
+          isFullWeekEvent: true,
           subLessons: [],
           lessonColor: Colors.orange, // Orange color for full week events
         ));
@@ -1252,14 +1251,17 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
       widget.onPlanChanged(_planData);
     });
 
+    // Save the data
+    _saveWeekData();
+
     // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$eventName added to all days in Period ${periodIndex + 1}'),
         backgroundColor: Colors.green,
-                    ),
-                  );
-                }
+      ),
+    );
+  }
 
   void _previousWeek() {
     if (widget.onPreviousWeek != null) {
