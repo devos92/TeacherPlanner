@@ -291,17 +291,8 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
 
   // Event handlers
   void _handleCurriculumSelection(List<CurriculumData> outcomes) {
-    final newOutcomes = outcomes.map((outcome) => CurriculumOutcome(
-      id: outcome.id,
-      code: outcome.code ?? '',
-      description: outcome.description ?? '',
-      elaboration: outcome.elaboration ?? '',
-    )).toList();
-    
-    setState(() {
-      // _selectedOutcomes = newOutcomes; // Removed unused field
-      // _selectedOutcomeCodes = newOutcomes.map((o) => o.code).toList(); // Removed unused field
-    });
+    // Process curriculum selection if needed in the future
+    // For now, just handle the selection without storing the data
   }
 
   void _updateLessonBody(EnhancedEventBlock event, String value) {
@@ -361,8 +352,8 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     );
 
     if (source == null) {
-      final file = await DayDetailService.pickAnyFile();
-      if (file != null) await _processSelectedFile(event, file);
+      final imageFile = await DayDetailService.pickAnyFile();
+      if (imageFile != null) await _processSelectedFile(event, imageFile);
       return;
     }
 
@@ -372,7 +363,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     }
   }
 
-  Future<void> _processSelectedFile(EnhancedEventBlock event, File file) async {
+  Future<void> _processSelectedFile(EnhancedEventBlock event, XFile imageFile) async {
     try {
       showDialog(
         context: context,
@@ -384,7 +375,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
         ),
       );
 
-      final savedPath = await DayDetailService.saveImageToLocal(file);
+      final savedPath = await DayDetailService.saveImageToLocal(imageFile);
       
       if (savedPath != null) {
         setState(() {
@@ -470,13 +461,13 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     );
   }
 
-  void _removePicture(EnhancedEventBlock event, String imagePath) {
+  void _removePicture(EnhancedEventBlock event, String imagePath) async {
     setState(() {
       final updatedEvent = DayDetailService.removePictureFromLesson(event, imagePath);
       final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
       if (idx != -1) _enhancedEvents[idx] = updatedEvent;
     });
-    DayDetailService.deleteLocalImage(imagePath);
+    await DayDetailService.deleteLocalImage(imagePath);
   }
 
   void _removeHyperlink(EnhancedEventBlock event, String linkData) {
