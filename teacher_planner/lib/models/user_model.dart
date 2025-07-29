@@ -10,56 +10,38 @@ class UserModel {
   final String lastName;
   final String? school;
   final String? role;
+  final bool isActive;
+  final int loginAttempts;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final bool isActive;
-  final bool emailVerified;
-  final DateTime? lastLogin;
-  final int loginAttempts;
-  final DateTime? lockedUntil;
 
-  UserModel({
+  const UserModel({
     required this.id,
     required this.email,
     required this.firstName,
     required this.lastName,
     this.school,
     this.role,
+    required this.isActive,
+    required this.loginAttempts,
     required this.createdAt,
     required this.updatedAt,
-    required this.isActive,
-    required this.emailVerified,
-    this.lastLogin,
-    required this.loginAttempts,
-    this.lockedUntil,
   });
 
   /// Create user model from JSON with validation
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    try {
-      return UserModel(
-        id: json['id'] as String,
-        email: json['email'] as String,
-        firstName: json['first_name'] as String,
-        lastName: json['last_name'] as String,
-        school: json['school'] as String?,
-        role: json['role'] as String?,
-        createdAt: DateTime.parse(json['created_at'] as String),
-        updatedAt: DateTime.parse(json['updated_at'] as String),
-        isActive: json['is_active'] as bool? ?? true,
-        emailVerified: json['email_verified'] as bool? ?? false,
-        lastLogin: json['last_login'] != null 
-          ? DateTime.parse(json['last_login'] as String)
-          : null,
-        loginAttempts: json['login_attempts'] as int? ?? 0,
-        lockedUntil: json['locked_until'] != null 
-          ? DateTime.parse(json['locked_until'] as String)
-          : null,
-      );
-    } catch (e) {
-      debugPrint('Error creating UserModel from JSON: $e');
-      rethrow;
-    }
+    return UserModel(
+      id: json['id'] as String,
+      email: json['email'] as String,
+      firstName: json['first_name'] as String,
+      lastName: json['last_name'] as String,
+      school: json['school'] as String?,
+      role: json['role'] as String?,
+      isActive: json['is_active'] as bool? ?? true,
+      loginAttempts: json['login_attempts'] as int? ?? 0,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+    );
   }
 
   /// Convert user model to JSON (excluding sensitive data)
@@ -71,13 +53,10 @@ class UserModel {
       'last_name': lastName,
       'school': school,
       'role': role,
+      'is_active': isActive,
+      'login_attempts': loginAttempts,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
-      'is_active': isActive,
-      'email_verified': emailVerified,
-      'last_login': lastLogin?.toIso8601String(),
-      'login_attempts': loginAttempts,
-      'locked_until': lockedUntil?.toIso8601String(),
     };
   }
 
@@ -92,10 +71,7 @@ class UserModel {
     DateTime? createdAt,
     DateTime? updatedAt,
     bool? isActive,
-    bool? emailVerified,
-    DateTime? lastLogin,
     int? loginAttempts,
-    DateTime? lockedUntil,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -107,10 +83,7 @@ class UserModel {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       isActive: isActive ?? this.isActive,
-      emailVerified: emailVerified ?? this.emailVerified,
-      lastLogin: lastLogin ?? this.lastLogin,
       loginAttempts: loginAttempts ?? this.loginAttempts,
-      lockedUntil: lockedUntil ?? this.lockedUntil,
     );
   }
 
@@ -129,13 +102,12 @@ class UserModel {
 
   /// Check if user account is locked
   bool get isLocked {
-    if (lockedUntil == null) return false;
-    return DateTime.now().isBefore(lockedUntil!);
+    return false; // No locking mechanism in current schema
   }
 
   /// Check if user can login
   bool get canLogin {
-    return isActive && !isLocked && emailVerified;
+    return isActive && !isLocked;
   }
 
   /// Get user's role display name

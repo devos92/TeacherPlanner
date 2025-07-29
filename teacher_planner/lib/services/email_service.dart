@@ -151,17 +151,10 @@ class EmailService {
         return false;
       }
 
-      // Check if already verified
-      if (verification['verified'] == true) {
-        debugPrint('Email already verified: $email');
-        return false;
-      }
-
-      // Update user as verified
+      // Update user verification status
       await _supabase
           .from('users')
           .update({
-            'email_verified': true,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', verification['user_id']);

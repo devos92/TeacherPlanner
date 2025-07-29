@@ -6,6 +6,9 @@ import '../widgets/period_selection_dialog.dart';
 import '../widgets/weekly_plan_widget.dart';
 import '../models/event_block.dart'; // Add import for EventBlock
 import '../models/weekly_plan_data.dart'; // Updated import path
+import '../services/auto_save_service.dart'; // Add auto-save service
+import '../services/auth_service.dart'; // Add auth service
+import '../widgets/save_indicator.dart'; // Add save indicator
 import 'enhanced_day_detail_page.dart'; // Add import for day detail page
 
 class WeekView extends StatefulWidget {
@@ -79,6 +82,58 @@ class _WeekViewState extends State<WeekView> {
           ],
         ),
         actions: [
+          // Save button
+          FutureBuilder<String>(
+            future: _getCurrentUserId(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                );
+              }
+              
+              final userId = snapshot.data ?? '';
+              
+              // If no user ID, show login prompt instead of save button
+              if (userId.isEmpty) {
+                return IconButton(
+                  icon: Icon(Icons.login),
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Please login to save your weekly plan'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  },
+                  tooltip: 'Login to Save',
+                );
+              }
+              
+              return SaveIndicator(
+                saveKey: 'weekly_plan_${_weekStartDate.millisecondsSinceEpoch}',
+                data: _getWeeklyPlanData(),
+                userId: userId,
+                tableName: 'weekly_plans',
+                onSaveSuccess: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('✅ Weekly plan saved!')),
+                  );
+                },
+                onSaveError: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('❌ Failed to save weekly plan'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+          SizedBox(width: 8),
           // Week navigation
           IconButton(
             icon: Icon(Icons.chevron_left),
@@ -288,11 +343,62 @@ class _WeekViewState extends State<WeekView> {
     setState(() {
       _weekStartDate = _weekStartDate.add(Duration(days: weeks * 7));
     });
+    // Auto-save when week changes
+    _autoSaveWeeklyPlan();
   }
 
   void _goToToday() {
     setState(() {
       _calculateWeekStart(); // Recalculate the start of the current week
     });
+    // Auto-save when going to today
+    _autoSaveWeeklyPlan();
+  }
+
+  /// Get current user ID for save operations
+  Future<String> _getCurrentUserId() async {
+    try {
+      // Ensure user is authenticated
+      final isAuthenticated = await AuthService.instance.ensureAuthenticated();
+      if (!isAuthenticated) {
+        debugPrint('❌ User not authenticated');
+        return '';
+      }
+
+      final currentUser = await AuthService.instance.getCurrentUser();
+      if (currentUser != null) {
+        debugPrint('✅ User authenticated: ${currentUser.email}');
+        return currentUser.id;
+      }
+      
+      debugPrint('❌ No current user found');
+      return '';
+    } catch (e) {
+      debugPrint('Error getting current user ID: $e');
+      return '';
+    }
+  }
+
+  /// Get weekly plan data for saving
+  Map<String, dynamic> _getWeeklyPlanData() {
+    return {
+      'week_start_date': _weekStartDate.toIso8601String(),
+      'periods': _periods,
+      'is_vertical_layout': _isVerticalLayout,
+      'created_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toIso8601String(),
+    };
+  }
+
+  /// Auto-save weekly plan data
+  Future<void> _autoSaveWeeklyPlan() async {
+    try {
+      await AutoSaveService.instance.saveWeeklyPlan(
+        planData: _getWeeklyPlanData(),
+        userId: await _getCurrentUserId(),
+      );
+    } catch (e) {
+      debugPrint('Auto-save error: $e');
+    }
   }
 }

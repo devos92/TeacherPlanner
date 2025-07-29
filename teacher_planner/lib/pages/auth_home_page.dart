@@ -6,7 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import 'home_page.dart';
-import '../services/email_service.dart'; 
+import '../services/email_service.dart';
+import 'database_test_page.dart'; // Added import for database test
+
 class AuthHomePage extends StatefulWidget {
   @override
   _AuthHomePageState createState() => _AuthHomePageState();
@@ -78,6 +80,12 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
   void _navigateToMainApp() {
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (context) => HomePage()),
+    );
+  }
+
+  void _navigateToDatabaseTest() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => DatabaseTestPage()),
     );
   }
 
@@ -253,6 +261,21 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
             
             // Forgot Password (Login only)
             if (_isLogin) _buildForgotPassword(),
+            
+            // Skip Auth Button (for testing)
+            SizedBox(height: 16),
+            Center(
+              child: TextButton(
+                onPressed: _navigateToDatabaseTest,
+                child: Text(
+                  'Test Database Connection',
+                  style: TextStyle(
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -602,7 +625,7 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
       AuthResult result;
       
       if (_isLogin) {
-        result = await AuthService.instance.login(
+        result = await AuthService.instance.loginWithoutEmailConfirmation(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );

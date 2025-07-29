@@ -15,11 +15,10 @@ class DatabaseConnectionTest {
       final response = await _supabase
           .from('users')
           .select('count')
-          .limit(1)
-          .execute();
+          .limit(1);
       
       print('✅ Database connection successful!');
-      print('Response status: ${response.status}');
+      print('Response data: ${response.length} rows');
       return true;
     } catch (e) {
       print('❌ Database connection failed: $e');
@@ -62,8 +61,7 @@ class DatabaseConnectionTest {
           final response = await _supabase
               .from(table)
               .select('count')
-              .limit(1)
-              .execute();
+              .limit(1);
           print('✅ Table "$table" accessible');
         } catch (e) {
           print('⚠️  Table "$table" not accessible: $e');

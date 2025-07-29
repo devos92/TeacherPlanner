@@ -43,27 +43,32 @@ class DatabaseService {
 
   Future<DatabaseUser?> createUser({
     required String email,
-    required String passwordHash,
-    required String salt,
-    String? firstName,
-    String? lastName,
+    required String firstName,
+    required String lastName,
+    String? school,
+    String? role = 'teacher',
   }) async {
     try {
-      final response = await _supabase
+      final userData = {
+        'email': email.toLowerCase(),
+        'first_name': firstName.trim(),
+        'last_name': lastName.trim(),
+        'school': school?.trim(),
+        'role': role?.trim() ?? 'teacher',
+        'created_at': DateTime.now().toIso8601String(),
+        'updated_at': DateTime.now().toIso8601String(),
+        'is_active': true,
+        'login_attempts': 0,
+        'locked_until': null,
+      };
+
+      final result = await _supabase
           .from('users')
-          .insert({
-            'email': email,
-            'password_hash': passwordHash,
-            'salt': salt,
-            'first_name': firstName,
-            'last_name': lastName,
-            'is_active': true,
-            'is_email_verified': false,
-          })
+          .insert(userData)
           .select()
           .single();
-      
-      return DatabaseUser.fromJson(response);
+
+      return DatabaseUser.fromJson(result);
     } catch (e) {
       print('Error creating user: $e');
       return null;

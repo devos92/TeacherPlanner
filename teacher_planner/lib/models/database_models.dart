@@ -10,7 +10,6 @@ class DatabaseUser {
   final String? firstName;
   final String? lastName;
   final bool isActive;
-  final bool isEmailVerified;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -22,7 +21,6 @@ class DatabaseUser {
     this.firstName,
     this.lastName,
     required this.isActive,
-    required this.isEmailVerified,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -36,7 +34,6 @@ class DatabaseUser {
       firstName: json['first_name'],
       lastName: json['last_name'],
       isActive: json['is_active'],
-      isEmailVerified: json['is_email_verified'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
     );
@@ -51,7 +48,6 @@ class DatabaseUser {
       'first_name': firstName,
       'last_name': lastName,
       'is_active': isActive,
-      'is_email_verified': isEmailVerified,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };

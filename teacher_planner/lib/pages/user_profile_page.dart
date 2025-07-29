@@ -190,21 +190,15 @@ class _UserProfilePageState extends State<UserProfilePage> {
                   Container(
                     padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _currentUser?.emailVerified == true
-                          ? Colors.green[100]
-                          : Colors.orange[100],
+                      color: Colors.blue[100],
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _currentUser?.emailVerified == true
-                          ? '✓ Email Verified'
-                          : '⚠ Email Not Verified',
+                      '✓ Account Active',
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        color: _currentUser?.emailVerified == true
-                            ? Colors.green[700]
-                            : Colors.orange[700],
+                        color: Colors.blue[700],
                         fontFamily: 'Roboto',
                       ),
                     ),
@@ -416,23 +410,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
               ),
             ),
             SizedBox(height: 16),
-            
-            // Resend Verification Email
-            if (_currentUser?.emailVerified == false) ...[
-              ListTile(
-                leading: Icon(Icons.email_outlined, color: Colors.orange),
-                title: Text(
-                  'Resend Verification Email',
-                  style: TextStyle(fontFamily: 'Roboto'),
-                ),
-                subtitle: Text(
-                  'Verify your email address',
-                  style: TextStyle(fontSize: 12, fontFamily: 'Roboto'),
-                ),
-                onTap: _resendVerificationEmail,
-              ),
-              Divider(),
-            ],
             
             // Account Statistics
             ListTile(
@@ -828,8 +805,6 @@ class _UserProfilePageState extends State<UserProfilePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildStatItem('Member Since', _formatDate(_currentUser?.createdAt)),
-            _buildStatItem('Last Login', _formatDate(_currentUser?.lastLogin)),
-            _buildStatItem('Email Verified', _currentUser?.emailVerified == true ? 'Yes' : 'No'),
             _buildStatItem('Account Status', _currentUser?.isActive == true ? 'Active' : 'Inactive'),
             _buildStatItem('Role', _currentUser?.roleDisplayName ?? 'Teacher'),
           ],

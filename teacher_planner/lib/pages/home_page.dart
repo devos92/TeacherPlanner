@@ -9,6 +9,7 @@ import 'enhanced_day_detail_page.dart';
 import 'long_term_planning_page.dart';
 import 'settings_page.dart';
 import 'user_profile_page.dart'; // Added import for UserProfilePage
+import 'database_test_page.dart'; // Added import for DatabaseTestPage
 
 class HomePage extends StatefulWidget {
   @override
@@ -33,6 +34,16 @@ class _HomePageState extends State<HomePage> {
         title: Text(_getPageTitle()),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         actions: [
+          IconButton(
+            icon: Icon(Icons.storage),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => DatabaseTestPage()),
+              );
+            },
+            tooltip: 'Database Test',
+          ),
           IconButton(
             icon: Icon(Icons.settings),
             onPressed: () {
