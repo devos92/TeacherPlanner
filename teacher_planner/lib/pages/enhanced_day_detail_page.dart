@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/curriculum_models.dart';
 import '../models/event_block.dart';
-import '../models/weekly_plan_data.dart'; // Updated import path
+import '../models/weekly_plan_data.dart';
 import '../services/pdf_service.dart';
 import '../services/image_service.dart';
 import '../widgets/curriculum_sidebar.dart';
-import '../widgets/attachment_manager.dart';
-import 'week_view.dart';
+import '../widgets/lesson_card_widget.dart';
+import '../widgets/lesson_details_section.dart';
+import '../widgets/teacher_notes_section.dart';
+import '../widgets/resource_image_item.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:path/path.dart' as path;
@@ -19,9 +21,9 @@ import '../config/app_fonts.dart';
 class EnhancedDayDetailPage extends StatefulWidget {
   final String day;
   final List<EventBlock> events;
-  final List<WeeklyPlanData>? weeklyPlanData; // Add weekly plan data
-  final int dayIndex; // Add day index for filtering
-  final Function(List<WeeklyPlanData>)? onPlanDataChanged; // Callback to save changes
+  final List<WeeklyPlanData>? weeklyPlanData;
+  final int dayIndex;
+  final Function(List<WeeklyPlanData>)? onPlanDataChanged;
 
   const EnhancedDayDetailPage({
     Key? key,
@@ -37,9 +39,8 @@ class EnhancedDayDetailPage extends StatefulWidget {
 }
 
 class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
-  // events and selections
   late List<EnhancedEventBlock> _enhancedEvents;
-  late List<WeeklyPlanData> _localWeeklyPlanData; // Local copy for editing
+  late List<WeeklyPlanData> _localWeeklyPlanData;
   List<String> _selectedOutcomeCodes = [];
   List<CurriculumOutcome> _selectedOutcomes = [];
   bool _showCurriculumSidebar = true;
@@ -48,7 +49,6 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   @override
   void initState() {
     super.initState();
-    // Initialize local copy of weekly plan data
     _localWeeklyPlanData = widget.weeklyPlanData != null 
         ? List.from(widget.weeklyPlanData!) 
         : [];
@@ -58,25 +58,21 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   void _loadLessonsFromWeeklyPlan() {
     List<EnhancedEventBlock> lessons = [];
 
-    // Load lessons from local weekly plan data for this specific day
     if (_localWeeklyPlanData.isNotEmpty) {
-      // Load regular lessons
       final dayLessons = _localWeeklyPlanData.where((data) => 
         data.dayIndex == widget.dayIndex && data.isLesson
       ).toList();
 
-      // Sort by period index to maintain proper order
       dayLessons.sort((a, b) => a.periodIndex.compareTo(b.periodIndex));
 
       for (final lesson in dayLessons) {
-        // Convert WeeklyPlanData to EnhancedEventBlock
         lessons.add(EnhancedEventBlock(
           id: lesson.lessonId.isNotEmpty ? lesson.lessonId : UniqueKey().toString(),
           day: widget.day,
           subject: lesson.subject.isNotEmpty ? lesson.subject : 'Lesson ${lesson.periodIndex + 1}',
           subtitle: 'Period ${lesson.periodIndex + 1}',
           body: lesson.content.isNotEmpty ? lesson.content : 'No description available',
-          notes: lesson.notes, // Include notes
+          notes: lesson.notes,
           color: lesson.lessonColor ?? _getColorForPeriod(lesson.periodIndex),
           startHour: 8 + lesson.periodIndex,
           startMinute: 0,
@@ -84,103 +80,34 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           finishMinute: 0,
           periodIndex: lesson.periodIndex,
           widthFactor: 1.0,
-          attachmentIds: [], // Will be populated from lesson data
-          curriculumOutcomeIds: [], // Will be populated from lesson data
-          hyperlinks: [], // Will be populated from lesson data
-          createdAt: lesson.date ?? DateTime.now(),
-          updatedAt: DateTime.now(),
-        ));
-
-        // Add sub-lessons if they exist
-        if (lesson.subLessons.isNotEmpty) {
-          final sortedSubLessons = lesson.subLessons.toList();
-          sortedSubLessons.sort((a, b) => a.periodIndex.compareTo(b.periodIndex));
-          
-          for (final subLesson in sortedSubLessons) {
-            lessons.add(EnhancedEventBlock(
-              id: subLesson.lessonId.isNotEmpty ? subLesson.lessonId : UniqueKey().toString(),
-              day: widget.day,
-              subject: subLesson.subject.isNotEmpty ? subLesson.subject : 'Sub Lesson',
-              subtitle: 'Period ${subLesson.periodIndex + 1} - Additional',
-              body: subLesson.content.isNotEmpty ? subLesson.content : 'No description available',
-              notes: subLesson.notes,
-              color: subLesson.lessonColor ?? _getColorForPeriod(subLesson.periodIndex),
-              startHour: 8 + subLesson.periodIndex,
-              startMinute: 0,
-              finishHour: 9 + subLesson.periodIndex,
-              finishMinute: 0,
-              periodIndex: subLesson.periodIndex,
-              widthFactor: 1.0,
-              attachmentIds: [],
-              curriculumOutcomeIds: [],
-              hyperlinks: [],
-              createdAt: subLesson.date ?? DateTime.now(),
-              updatedAt: DateTime.now(),
-            ));
-          }
-        }
-      }
-
-      // Also load full week events for this day
-      final fullWeekEvents = _localWeeklyPlanData.where((data) => 
-        data.dayIndex == widget.dayIndex && data.isFullWeekEvent
-      ).toList();
-
-      fullWeekEvents.sort((a, b) => a.periodIndex.compareTo(b.periodIndex));
-
-      for (final fullWeekEvent in fullWeekEvents) {
-        lessons.add(EnhancedEventBlock(
-          id: fullWeekEvent.lessonId.isNotEmpty ? fullWeekEvent.lessonId : UniqueKey().toString(),
-          day: widget.day,
-          subject: fullWeekEvent.subject.isNotEmpty ? fullWeekEvent.subject : 'Event',
-          subtitle: '',
-          body: fullWeekEvent.notes.isNotEmpty ? fullWeekEvent.notes : '',
-          notes: fullWeekEvent.notes,
-          color: Colors.orange.withOpacity(0.3),
-          startHour: 8 + fullWeekEvent.periodIndex,
-          startMinute: 0,
-          finishHour: 9 + fullWeekEvent.periodIndex,
-          finishMinute: 0,
-          periodIndex: fullWeekEvent.periodIndex,
-          widthFactor: 1.0,
           attachmentIds: [],
           curriculumOutcomeIds: [],
           hyperlinks: [],
-          createdAt: fullWeekEvent.date ?? DateTime.now(),
+          createdAt: lesson.date ?? DateTime.now(),
           updatedAt: DateTime.now(),
-          isFullWeekEvent: true,
         ));
       }
     }
 
-    // Fallback to existing EventBlock data if no weekly plan data
     if (lessons.isEmpty && widget.events.isNotEmpty) {
-      lessons = widget.events.map((e) {
-        return EnhancedEventBlock(
-          id: UniqueKey().toString(),
-          day: e.day,
-          subject: e.subject,
-          subtitle: e.subtitle,
-          body: e.body,
-          color: e.color,
-          startHour: e.startHour,
-          startMinute: e.startMinute,
-          finishHour: e.finishHour,
-          finishMinute: e.finishMinute,
-          widthFactor: e.widthFactor,
-          attachmentIds: [],
-          curriculumOutcomeIds: [],
-          hyperlinks: [],
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        );
-      }).toList();
-      
-      lessons.sort((a, b) {
-        final aTime = a.startHour * 60 + a.startMinute;
-        final bTime = b.startHour * 60 + b.startMinute;
-        return aTime.compareTo(bTime);
-      });
+      lessons = widget.events.map((e) => EnhancedEventBlock(
+        id: UniqueKey().toString(),
+        day: e.day,
+        subject: e.subject,
+        subtitle: e.subtitle,
+        body: e.body,
+        color: e.color,
+        startHour: e.startHour,
+        startMinute: e.startMinute,
+        finishHour: e.finishHour,
+        finishMinute: e.finishMinute,
+        widthFactor: e.widthFactor,
+        attachmentIds: [],
+        curriculumOutcomeIds: [],
+        hyperlinks: [],
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      )).toList();
     }
 
     setState(() {
@@ -189,14 +116,12 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   }
 
   void _saveChangesToWeeklyPlan() {
-    // Convert enhanced events back to weekly plan data and save
     if (widget.onPlanDataChanged != null) {
       widget.onPlanDataChanged!(_localWeeklyPlanData);
     }
   }
 
   Color _getColorForPeriod(int periodIndex) {
-    // Use the same lesson colors as the weekly plan for consistency
     const List<Color> lessonColors = [
       Color(0xFFD9BDAF), Color(0xFFC68484), Color(0xFFAE7A53), 
       Color(0xFF8F8369), Color(0xFF848370), Color(0xFFA1ADA7), 
@@ -208,8 +133,6 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
       Color(0xFFF2DBC9), Color(0xFFD49F78),
       Color(0xFFF8ECD9),
     ];
-    
-    // Return a lesson color based on period index, cycling through the available colors
     return lessonColors[periodIndex % lessonColors.length];
   }
 
@@ -228,7 +151,6 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
         foregroundColor: Colors.white,
         elevation: 2,
         actions: [
-          // Print Button
           IconButton(
             icon: _isGeneratingPdf 
               ? SizedBox(
@@ -240,10 +162,9 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                   ),
                 )
               : Icon(Icons.print),
-            onPressed: _isGeneratingPdf ? null : () => _printDailyWorkPad(),
+            onPressed: _isGeneratingPdf ? null : _printDailyWorkPad,
             tooltip: 'Print Daily Work Pad',
           ),
-          // Share Button
           IconButton(
             icon: _isGeneratingPdf 
               ? SizedBox(
@@ -255,14 +176,12 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                   ),
                 )
               : Icon(Icons.share),
-            onPressed: _isGeneratingPdf ? null : () => _shareDailyWorkPad(),
+            onPressed: _isGeneratingPdf ? null : _shareDailyWorkPad,
             tooltip: 'Share Daily Work Pad',
           ),
-          // Only show sidebar toggle on larger screens
           if (!isMobile)
             IconButton(
-              icon: Icon(
-                  _showCurriculumSidebar ? Icons.chevron_left : Icons.chevron_right),
+              icon: Icon(_showCurriculumSidebar ? Icons.chevron_left : Icons.chevron_right),
               onPressed: () => setState(() => _showCurriculumSidebar = !_showCurriculumSidebar),
               tooltip: 'Toggle Curriculum Sidebar',
             ),
@@ -270,14 +189,12 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
       ),
       body: Row(
         children: [
-          // Responsive sidebar - hide on mobile, show on larger screens
           if (_showCurriculumSidebar && !isMobile)
             SizedBox(
               width: isDesktop ? 350 : 300,
               child: CurriculumSidebar(
                 width: isDesktop ? 350 : 300,
                 onSelectionChanged: (outcomes) {
-                  // Convert CurriculumData to CurriculumOutcome and replace selected outcomes
                   final newOutcomes = outcomes.map((outcome) => CurriculumOutcome(
                     id: outcome.id,
                     code: outcome.code ?? '',
@@ -285,7 +202,6 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                     elaboration: outcome.elaboration ?? '',
                   )).toList();
                   
-                  // Replace the selected outcomes (don't add to existing)
                   setState(() {
                     _selectedOutcomes = newOutcomes;
                     _selectedOutcomeCodes = newOutcomes.map((o) => o.code).toList();
@@ -299,127 +215,24 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Colors.grey.shade50,
-                    Colors.grey.shade100,
-                  ],
+                  colors: [Colors.grey.shade50, Colors.grey.shade100],
                 ),
               ),
               child: SingleChildScrollView(
-                padding: EdgeInsets.all(
-                  isMobile ? 16.0 : 
-                  isTablet ? 20.0 : 24.0
-                ),
+                padding: EdgeInsets.all(isMobile ? 16.0 : isTablet ? 20.0 : 24.0),
                 child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: isDesktop ? 800 : double.infinity,
-                  ),
+                  constraints: BoxConstraints(maxWidth: isDesktop ? 800 : double.infinity),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Day Header
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.all(isMobile ? 16 : 20),
-                        margin: EdgeInsets.only(bottom: 24),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              theme.primaryColor.withOpacity(0.1),
-                              theme.primaryColor.withOpacity(0.05),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: theme.primaryColor.withOpacity(0.2),
-                            width: 1,
-                          ),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.day,
-                              style: (isMobile ? theme.textTheme.headlineSmall : theme.textTheme.headlineMedium)?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: theme.primaryColor,
-                              ),
-                            ),
-                            SizedBox(height: 8),
-                            Text(
-                              'Daily Work Pad',
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                color: theme.primaryColor.withOpacity(0.7),
-                              ),
-                            ),
-                            if (_enhancedEvents.isNotEmpty) ...[
-                              SizedBox(height: 8),
-                              Text(
-                                '${_enhancedEvents.length} lesson${_enhancedEvents.length == 1 ? '' : 's'} loaded from weekly plan',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.primaryColor.withOpacity(0.6),
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      
-                      // Lessons List
+                      _buildDayHeader(theme, isMobile),
                       if (_enhancedEvents.isNotEmpty) ...[
-                        ..._enhancedEvents.map((event) => _buildEventItem(event, _enhancedEvents.indexOf(event))).toList(),
+                        ..._enhancedEvents.map((event) => _buildLessonCard(event, isTablet)).toList(),
                       ] else ...[
-                        // Empty State
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(isMobile ? 30 : 40),
-                          margin: EdgeInsets.only(bottom: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.08),
-                                blurRadius: 12,
-                                offset: Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.school_outlined,
-                                size: isMobile ? 48 : 64,
-                                color: Colors.grey.shade400,
-                              ),
-                              SizedBox(height: 16),
-                              Text(
-                                'No Lessons for ${widget.day}',
-                                style: (isMobile ? theme.textTheme.titleMedium : theme.textTheme.titleLarge)?.copyWith(
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 8),
-                              Text(
-                                'Lessons from your weekly plan will appear here.\nGo back to the weekly plan to add lessons for this day.',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey.shade500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                        ),
+                        _buildEmptyState(theme, isMobile),
                       ],
-                      
-                      // Add Lesson Button
                       _buildAddLessonButton(theme, isMobile, isTablet, isDesktop),
-                      
-                      SizedBox(height: 100), // Bottom padding
+                      SizedBox(height: 100),
                     ],
                   ),
                 ),
@@ -431,9 +244,59 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     );
   }
 
-  Widget _buildEventItem(EnhancedEventBlock event, int index) {
-    final isTablet = MediaQuery.of(context).size.width > 768;
-    
+  Widget _buildDayHeader(ThemeData theme, bool isMobile) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(isMobile ? 16 : 20),
+      margin: EdgeInsets.only(bottom: 24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            theme.primaryColor.withOpacity(0.1),
+            theme.primaryColor.withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: theme.primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            widget.day,
+            style: (isMobile ? theme.textTheme.headlineSmall : theme.textTheme.headlineMedium)?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.primaryColor,
+            ),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Daily Work Pad',
+            style: theme.textTheme.titleMedium?.copyWith(
+              color: theme.primaryColor.withOpacity(0.7),
+            ),
+          ),
+          if (_enhancedEvents.isNotEmpty) ...[
+            SizedBox(height: 8),
+            Text(
+              '${_enhancedEvents.length} lesson${_enhancedEvents.length == 1 ? '' : 's'} loaded from weekly plan',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.primaryColor.withOpacity(0.6),
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLessonCard(EnhancedEventBlock event, bool isTablet) {
     return Container(
       margin: EdgeInsets.only(
         bottom: isTablet ? 16 : 12,
@@ -447,99 +310,33 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(isTablet ? 16 : 12),
-            border: Border.all(
-              color: event.color.withOpacity(0.3),
-              width: 2,
-            ),
+            border: Border.all(color: event.color.withOpacity(0.3), width: 2),
             boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-                spreadRadius: 0,
-              ),
-              BoxShadow(
-                color: event.color.withOpacity(0.08),
-                blurRadius: 24,
-                offset: Offset(0, 8),
-                spreadRadius: 0,
-              ),
+              BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: Offset(0, 4)),
+              BoxShadow(color: event.color.withOpacity(0.08), blurRadius: 24, offset: Offset(0, 8)),
             ],
           ),
           child: Column(
             children: [
-              // Header with period and subject
-              Container(
-                padding: EdgeInsets.all(isTablet ? 20 : 16),
-                decoration: BoxDecoration(
-                  color: event.color.withOpacity(0.1),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(isTablet ? 16 : 12),
-                    topRight: Radius.circular(isTablet ? 16 : 12),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    // Period badge
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: isTablet ? 12 : 10,
-                        vertical: isTablet ? 8 : 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: event.color.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
-                        border: Border.all(
-                          color: event.color.withOpacity(0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Text(
-                        'Period ${event.periodIndex + 1}',
-                        style: AppFonts.labelMedium.copyWith(
-                          color: event.color,
-                          fontSize: isTablet ? 14 : 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    
-                    SizedBox(width: 12),
-                    
-                    // Subject
-                    Expanded(
-                      child: Text(
-                        event.headerText?.isNotEmpty == true 
-                            ? event.headerText! 
-                            : event.subject,
-                        style: AppFonts.lessonTitle.copyWith(
-                          fontSize: isTablet ? 22 : 18,
-                          color: Colors.grey[900],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // Content section with inline editing
+              _buildLessonHeader(event, isTablet),
               Container(
                 padding: EdgeInsets.all(isTablet ? 20 : 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Lesson Details Section
-                    _buildInlineDetailsSection(event, isTablet),
-                    
+                    LessonDetailsSection(
+                      event: event,
+                      onChanged: (value) => _updateLessonBody(event, value),
+                      isTablet: isTablet,
+                    ),
                     SizedBox(height: 20),
-                    
-                    // Teacher Notes Section
-                    _buildInlineNotesSection(event, isTablet),
-                    
+                    TeacherNotesSection(
+                      event: event,
+                      onChanged: (value) => _updateLessonNotes(event, value),
+                      isTablet: isTablet,
+                    ),
                     SizedBox(height: 20),
-                    
-                    // Attachments and Links Section
-                    _buildInlineResourcesSection(event, isTablet),
+                    _buildResourcesSection(event, isTablet),
                   ],
                 ),
               ),
@@ -550,155 +347,53 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     );
   }
 
-  Widget _buildInlineDetailsSection(EnhancedEventBlock event, bool isTablet) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.description_outlined, color: event.color, size: 20),
-            SizedBox(width: 8),
-            Text(
-              'Lesson Details',
-              style: TextStyle(
-                fontSize: isTablet ? 16 : 14,
-                fontWeight: FontWeight.w600,
+  Widget _buildLessonHeader(EnhancedEventBlock event, bool isTablet) {
+    return Container(
+      padding: EdgeInsets.all(isTablet ? 20 : 16),
+      decoration: BoxDecoration(
+        color: event.color.withOpacity(0.1),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(isTablet ? 16 : 12),
+          topRight: Radius.circular(isTablet ? 16 : 12),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: isTablet ? 12 : 10,
+              vertical: isTablet ? 8 : 6,
+            ),
+            decoration: BoxDecoration(
+              color: event.color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
+              border: Border.all(color: event.color.withOpacity(0.3), width: 1),
+            ),
+            child: Text(
+              'Period ${event.periodIndex + 1}',
+              style: AppFonts.labelMedium.copyWith(
                 color: event.color,
+                fontSize: isTablet ? 14 : 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
-        SizedBox(height: 12),
-        TextFormField(
-          initialValue: event.body,
-          onChanged: (value) {
-            setState(() {
-              // Update the enhanced event
-              final updatedEvent = event.copyWith(
-                body: value,
-                updatedAt: DateTime.now(),
-              );
-              final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
-              if (idx != -1) _enhancedEvents[idx] = updatedEvent;
-              
-              // Update the weekly plan data
-              final planIdx = _localWeeklyPlanData.indexWhere((data) => 
-                data.lessonId == event.id && 
-                data.dayIndex == widget.dayIndex
-              );
-              if (planIdx != -1) {
-                _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(
-                  content: value,
-                );
-                
-                // Save changes back to parent
-                _saveChangesToWeeklyPlan();
-              }
-            });
-          },
-          style: AppFonts.userInput.copyWith(
-            fontSize: isTablet ? 16 : 14,
-            height: 1.5,
           ),
-          maxLines: 6,
-          decoration: InputDecoration(
-            labelText: 'Lesson Details',
-            hintText: 'Enter detailed lesson description, activities, objectives...',
-            hintStyle: AppFonts.userInput.copyWith(
-              color: Colors.grey.shade400,
-              fontSize: isTablet ? 14 : 12,
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              event.headerText?.isNotEmpty == true ? event.headerText! : event.subject,
+              style: AppFonts.lessonTitle.copyWith(
+                fontSize: isTablet ? 22 : 18,
+                color: Colors.grey[900],
+              ),
             ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: event.color.withOpacity(0.3)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: event.color, width: 2),
-            ),
-            filled: true,
-            fillColor: Colors.grey.shade50,
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _buildInlineNotesSection(EnhancedEventBlock event, bool isTablet) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.note_outlined, color: event.color, size: 20),
-            SizedBox(width: 8),
-            Text(
-              'Teacher Notes',
-              style: TextStyle(
-                fontSize: isTablet ? 16 : 14,
-                fontWeight: FontWeight.w600,
-                color: event.color,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 12),
-        TextFormField(
-          initialValue: event.notes,
-          onChanged: (value) {
-            setState(() {
-              // Update the enhanced event
-              final updatedEvent = event.copyWith(
-                notes: value,
-                updatedAt: DateTime.now(),
-              );
-              final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
-              if (idx != -1) _enhancedEvents[idx] = updatedEvent;
-              
-              // Update the weekly plan data
-              final planIdx = _localWeeklyPlanData.indexWhere((data) => 
-                data.lessonId == event.id && 
-                data.dayIndex == widget.dayIndex
-              );
-              if (planIdx != -1) {
-                _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(
-                  notes: value,
-                );
-                
-                // Save changes back to parent
-                _saveChangesToWeeklyPlan();
-              }
-            });
-          },
-          style: AppFonts.userInput.copyWith(
-            fontSize: isTablet ? 16 : 14,
-            height: 1.5,
-          ),
-          maxLines: 4,
-          decoration: InputDecoration(
-            labelText: 'Teacher Notes',
-            hintText: 'Add your notes, reminders, or additional details...',
-            hintStyle: AppFonts.userInput.copyWith(
-              color: Colors.grey.shade400,
-              fontSize: isTablet ? 14 : 12,
-            ),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: event.color.withOpacity(0.3)),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: event.color, width: 2),
-            ),
-            filled: true,
-            fillColor: Colors.grey.shade50,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildInlineResourcesSection(EnhancedEventBlock event, bool isTablet) {
+  Widget _buildResourcesSection(EnhancedEventBlock event, bool isTablet) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -715,7 +410,6 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
               ),
             ),
             Spacer(),
-            // Add buttons
             TextButton.icon(
               onPressed: () => _addPicture(event),
               icon: Icon(Icons.add_photo_alternate_outlined, size: 16),
@@ -740,225 +434,27 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           ],
         ),
         SizedBox(height: 12),
-        
-        // Display existing resources
         if (event.attachmentIds.isNotEmpty || event.hyperlinks.isNotEmpty) ...[
-          // Pictures
           if (event.attachmentIds.isNotEmpty) ...[
-            Text(
-              'Pictures',
-              style: TextStyle(
-                fontSize: isTablet ? 14 : 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
+            Text('Pictures', style: TextStyle(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
             SizedBox(height: 8),
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: event.attachmentIds.map((imagePath) {
-                final file = File(imagePath);
-                final fileName = path.basename(imagePath);
-                
-                return Container(
-                  width: isTablet ? 150 : 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: event.color.withOpacity(0.3),
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 4,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-                        child: Container(
-                          height: isTablet ? 100 : 80,
-                          width: double.infinity,
-                          child: file.existsSync()
-                              ? Image.file(
-                                  file,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: Colors.grey.shade200,
-                                      child: Icon(
-                                        Icons.broken_image,
-                                        color: Colors.grey.shade400,
-                                        size: isTablet ? 40 : 30,
-                                      ),
-                                    );
-                                  },
-                                )
-                              : Container(
-                                  color: Colors.grey.shade200,
-                                  child: Icon(
-                                    Icons.image_not_supported,
-                                    color: Colors.grey.shade400,
-                                    size: isTablet ? 40 : 30,
-                                  ),
-                                ),
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.all(6),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              fileName,
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: event.color,
-                                fontSize: isTablet ? 9 : 8,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: () => _viewImage(imagePath),
-                                    child: Container(
-                                      padding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                                      decoration: BoxDecoration(
-                                        color: event.color.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'View',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: event.color,
-                                          fontSize: isTablet ? 8 : 7,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 4),
-                                GestureDetector(
-                                  onTap: () => _removePicture(event, imagePath),
-                                  child: Container(
-                                    padding: EdgeInsets.all(2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red.shade50,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Icon(
-                                      Icons.close,
-                                      size: isTablet ? 10 : 8,
-                                      color: Colors.red.shade400,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }).toList(),
+              children: event.attachmentIds.map((imagePath) => ResourceImageItem(
+                imagePath: imagePath,
+                event: event,
+                onView: _viewImage,
+                onRemove: (path) => _removePicture(event, path),
+                isTablet: isTablet,
+              )).toList(),
             ),
             SizedBox(height: 16),
           ],
-          
-          // Links
           if (event.hyperlinks.isNotEmpty) ...[
-            Text(
-              'Links',
-              style: TextStyle(
-                fontSize: isTablet ? 14 : 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade700,
-              ),
-            ),
+            Text('Links', style: TextStyle(fontSize: isTablet ? 14 : 12, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
             SizedBox(height: 8),
-            ...event.hyperlinks.map((linkData) {
-              final parts = linkData.split('|');
-              final linkTitle = parts.length > 0 ? parts[0] : 'Link';
-              final linkUrl = parts.length > 1 ? parts[1] : linkData;
-              
-              return Container(
-                margin: EdgeInsets.only(bottom: 6),
-                padding: EdgeInsets.all(isTablet ? 8 : 6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                    color: Colors.grey.shade300,
-                    width: 1,
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.link,
-                          color: event.color,
-                          size: isTablet ? 14 : 12,
-                        ),
-                        SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            linkTitle,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: event.color,
-                              fontSize: isTablet ? 10 : 9,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: () => _removeHyperlink(event, linkData),
-                          icon: Icon(
-                            Icons.close,
-                            size: isTablet ? 12 : 10,
-                            color: Colors.red.shade400,
-                          ),
-                          padding: EdgeInsets.zero,
-                          constraints: BoxConstraints(
-                            minWidth: isTablet ? 16 : 14, 
-                            minHeight: isTablet ? 16 : 14
-                          ),
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      linkUrl,
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: isTablet ? 9 : 8,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
+            ...event.hyperlinks.map((linkData) => _buildLinkItem(linkData, event, isTablet)).toList(),
           ],
         ] else ...[
           Container(
@@ -966,25 +462,15 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
             decoration: BoxDecoration(
               color: Colors.grey.shade100,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                style: BorderStyle.solid,
-              ),
+              border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.info_outline,
-                  color: Colors.grey.shade600,
-                  size: isTablet ? 16 : 14,
-                ),
+                Icon(Icons.info_outline, color: Colors.grey.shade600, size: isTablet ? 16 : 14),
                 SizedBox(width: 6),
                 Text(
                   'No resources added yet. Click "Picture" or "Link" to add.',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: isTablet ? 11 : 10,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: isTablet ? 11 : 10),
                 ),
               ],
             ),
@@ -994,686 +480,83 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     );
   }
 
-  void _editEvent(EnhancedEventBlock event) {
-    // This method is no longer needed since we use inline editing
-    // Keeping for compatibility but it's not used
-  }
-
-  Widget _buildMetadataRow(IconData icon, String text, Color color, bool isTablet) {
-    return Row(
-      children: [
-        Container(
-          padding: EdgeInsets.all(isTablet ? 8 : 6),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(isTablet ? 8 : 6),
-          ),
-          child: Icon(
-            icon,
-            size: isTablet ? 18 : 16,
-            color: color,
-          ),
-        ),
-        SizedBox(width: isTablet ? 12 : 8),
-        Expanded(
-          child: Text(
-            text,
-            style: TextStyle(
-              fontSize: isTablet ? 14 : 12,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey[700],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLessonCard(EnhancedEventBlock event, ThemeData theme, bool isMobile, bool isTablet, bool isDesktop) {
-    // Show simplified card for full week events
-    if (event.isFullWeekEvent) {
-      return Container(
-        margin: EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Container(
-          padding: EdgeInsets.all(isMobile ? 12 : 16),
-          decoration: BoxDecoration(
-            color: event.color.withOpacity(0.3), // More solid background
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: event.color.withOpacity(0.6), // More solid border
-              width: 1,
-            ),
-          ),
-          child: Row(
+  Widget _buildLinkItem(String linkData, EnhancedEventBlock event, bool isTablet) {
+    final parts = linkData.split('|');
+    final linkTitle = parts.length > 0 ? parts[0] : 'Link';
+    final linkUrl = parts.length > 1 ? parts[1] : linkData;
+    
+    return Container(
+      margin: EdgeInsets.only(bottom: 6),
+      padding: EdgeInsets.all(isTablet ? 8 : 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Colors.grey.shade300, width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Icon(
-                Icons.event,
-                color: event.color,
-                size: isMobile ? 20 : 24,
-              ),
-              SizedBox(width: 12),
+              Icon(Icons.link, color: event.color, size: isTablet ? 14 : 12),
+              SizedBox(width: 6),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      event.subject,
-                      style: (isMobile ? theme.textTheme.titleMedium : theme.textTheme.titleLarge)?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: event.color,
-                      ),
-                    ),
-                    if (event.body.isNotEmpty) ...[
-                      SizedBox(height: 4),
-                      Text(
-                        event.body,
-                        style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-                          color: event.color.withOpacity(0.8), // Less transparent text
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  ],
+                child: Text(
+                  linkTitle,
+                  style: TextStyle(fontWeight: FontWeight.w600, color: event.color, fontSize: isTablet ? 10 : 9),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
+              ),
+              IconButton(
+                onPressed: () => _removeHyperlink(event, linkData),
+                icon: Icon(Icons.close, size: isTablet ? 12 : 10, color: Colors.red.shade400),
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(minWidth: isTablet ? 16 : 14, minHeight: isTablet ? 16 : 14),
               ),
             ],
           ),
-        ),
-      );
-    }
+          SizedBox(height: 2),
+          Text(
+            linkUrl,
+            style: TextStyle(color: Colors.grey.shade600, fontSize: isTablet ? 9 : 8),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
 
-    // Regular lesson card for normal lessons
+  Widget _buildEmptyState(ThemeData theme, bool isMobile) {
     return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(isMobile ? 30 : 40),
       margin: EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: Offset(0, 4))],
       ),
       child: Column(
         children: [
-          // Lesson Header
-          Container(
-            padding: EdgeInsets.all(isMobile ? 16 : 20),
-            decoration: BoxDecoration(
-              color: event.color.withOpacity(0.3), // More solid background
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(16),
-                topRight: Radius.circular(16),
-              ),
-              border: Border.all(
-                color: event.color.withOpacity(0.6), // More solid border
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                // Subject and Subtitle
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        event.subject,
-                        style: (isMobile ? theme.textTheme.titleMedium : theme.textTheme.titleLarge)?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: event.color,
-                        ),
-                      ),
-                      if (event.subtitle.isNotEmpty) ...[
-                        SizedBox(height: 4),
-                        Text(
-                          event.subtitle,
-                          style: (isMobile ? theme.textTheme.bodyMedium : theme.textTheme.titleMedium)?.copyWith(
-                            color: event.color.withOpacity(0.8), // Less transparent text
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+          Icon(Icons.school_outlined, size: isMobile ? 48 : 64, color: Colors.grey.shade400),
+          SizedBox(height: 16),
+          Text(
+            'No Lessons for ${widget.day}',
+            style: (isMobile ? theme.textTheme.titleMedium : theme.textTheme.titleLarge)?.copyWith(
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
             ),
           ),
-          
-          // Lesson Content Box (Always Open)
-          Container(
-            padding: EdgeInsets.all(isMobile ? 16 : 20),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(16),
-                bottomRight: Radius.circular(16),
-              ),
-              border: Border.all(
-                color: Colors.grey.shade200,
-                width: 1,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Description Section
-                if (event.body.isNotEmpty) ...[
-                  _buildDescriptionSection(event, theme, isMobile),
-                  SizedBox(height: 20),
-                ],
-                
-                // Attachments Section (Smaller)
-                _buildAttachmentsSection(event, theme, isMobile, isTablet),
-              ],
-            ),
+          SizedBox(height: 8),
+          Text(
+            'Lessons from your weekly plan will appear here.\nGo back to the weekly plan to add lessons for this day.',
+            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade500),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDescriptionSection(EnhancedEventBlock event, ThemeData theme, bool isMobile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.description_outlined,
-              color: event.color,
-              size: isMobile ? 16 : 18,
-            ),
-            SizedBox(width: 8),
-            Text(
-              'Lesson Details',
-              style: (isMobile ? theme.textTheme.bodyMedium : theme.textTheme.titleSmall)?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: event.color,
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 12),
-        Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(isMobile ? 12 : 16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.grey.shade200,
-              width: 1,
-            ),
-          ),
-          child: TextFormField(
-            initialValue: event.body,
-            onChanged: (value) {
-              setState(() {
-                // Update the enhanced event
-                final updatedEvent = event.copyWith(
-                  body: value,
-                  updatedAt: DateTime.now(),
-                );
-                final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
-                if (idx != -1) _enhancedEvents[idx] = updatedEvent;
-                
-                // Update the weekly plan data
-                final planIdx = _localWeeklyPlanData.indexWhere((data) => 
-                  data.lessonId == event.id && 
-                  data.dayIndex == widget.dayIndex
-                );
-                if (planIdx != -1) {
-                  _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(
-                    content: value,
-                    notes: value, // Update notes as well
-                  );
-                  
-                  // Save changes back to parent
-                  _saveChangesToWeeklyPlan();
-                }
-              });
-            },
-            style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-              height: 1.5,
-              color: Colors.black87,
-            ),
-            maxLines: 6,
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: 'Enter lesson description, activities, notes...',
-              hintStyle: TextStyle(
-                color: Colors.grey.shade400,
-                fontSize: isMobile ? 12 : 14,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildAttachmentsSection(EnhancedEventBlock event, ThemeData theme, bool isMobile, bool isTablet) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(
-              Icons.attach_file_outlined,
-              color: event.color,
-              size: isMobile ? 16 : 18,
-            ),
-            SizedBox(width: 8),
-            Text(
-              'Resources',
-              style: (isMobile ? theme.textTheme.bodyMedium : theme.textTheme.titleSmall)?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: event.color,
-              ),
-            ),
-            Spacer(),
-            // Add Buttons - Responsive layout
-            if (isMobile)
-              PopupMenuButton<String>(
-                icon: Icon(Icons.add, color: event.color),
-                onSelected: (value) {
-                  if (value == 'picture') {
-                    _addPicture(event);
-                  } else if (value == 'link') {
-                    _addHyperlink(event);
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'picture',
-                    child: Row(
-                      children: [
-                        Icon(Icons.add_photo_alternate_outlined, size: 16),
-                        SizedBox(width: 8),
-                        Text('Picture'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'link',
-                    child: Row(
-                      children: [
-                        Icon(Icons.link_outlined, size: 16),
-                        SizedBox(width: 8),
-                        Text('Link'),
-                      ],
-                    ),
-                  ),
-                ],
-              )
-            else
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => _addPicture(event),
-                    icon: Icon(Icons.add_photo_alternate_outlined, size: 16),
-                    label: Text('Picture'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: event.color,
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      minimumSize: Size.zero,
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  TextButton.icon(
-                    onPressed: () => _addHyperlink(event),
-                    icon: Icon(Icons.link_outlined, size: 16),
-                    label: Text('Link'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: event.color,
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      minimumSize: Size.zero,
-                    ),
-                  ),
-                ],
-              ),
-          ],
-        ),
-        SizedBox(height: 12),
-        
-        // Pictures and Links in a responsive layout
-        if (isMobile)
-          Column(
-            children: [
-              _buildPicturesSection(event, theme, isMobile),
-              SizedBox(height: 12),
-              _buildHyperlinksSection(event, theme, isMobile),
-            ],
-          )
-        else
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Pictures Column
-              Expanded(
-                child: _buildPicturesSection(event, theme, isMobile),
-              ),
-              SizedBox(width: 16),
-              // Hyperlinks Column
-              Expanded(
-                child: _buildHyperlinksSection(event, theme, isMobile),
-              ),
-            ],
-          ),
-      ],
-    );
-  }
-
-  Widget _buildPicturesSection(EnhancedEventBlock event, ThemeData theme, bool isMobile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Pictures',
-          style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
-          ),
-        ),
-        SizedBox(height: 8),
-        if (event.attachmentIds.isEmpty)
-          Container(
-            padding: EdgeInsets.all(isMobile ? 10 : 12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                style: BorderStyle.solid,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.image_outlined,
-                  color: Colors.grey.shade600,
-                  size: isMobile ? 14 : 16,
-                ),
-                SizedBox(width: 6),
-                Text(
-                  'No pictures',
-                  style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-                    color: Colors.grey.shade600,
-                    fontSize: isMobile ? 10 : 11,
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          // Display images in a grid layout for better visual presentation
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: event.attachmentIds.map((imagePath) {
-              final file = File(imagePath);
-              final fileName = path.basename(imagePath);
-              
-              return Container(
-                width: isMobile ? 120 : 150,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: event.color.withOpacity(0.3),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 4,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Image display
-                    ClipRRect(
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
-                      child: Container(
-                        height: isMobile ? 80 : 100,
-                        width: double.infinity,
-                        child: file.existsSync()
-                            ? Image.file(
-                                file,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    color: Colors.grey.shade200,
-                                    child: Icon(
-                                      Icons.broken_image,
-                                      color: Colors.grey.shade400,
-                                      size: isMobile ? 30 : 40,
-                                    ),
-                                  );
-                                },
-                              )
-                            : Container(
-                                color: Colors.grey.shade200,
-                                child: Icon(
-                                  Icons.image_not_supported,
-                                  color: Colors.grey.shade400,
-                                  size: isMobile ? 30 : 40,
-                                ),
-                              ),
-                      ),
-                    ),
-                    // Image info and controls
-                    Padding(
-                      padding: EdgeInsets.all(6),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            fileName,
-                            style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: event.color,
-                              fontSize: isMobile ? 8 : 9,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (!isMobile && file.existsSync()) ...[
-                            SizedBox(height: 2),
-                            Text(
-                              ImageService.getFileSize(file),
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.grey.shade600,
-                                fontSize: 7,
-                              ),
-                            ),
-                          ],
-                          SizedBox(height: 4),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              // View button
-                              Expanded(
-                                child: GestureDetector(
-                                  onTap: () => _viewImage(imagePath),
-                                  child: Container(
-                                    padding: EdgeInsets.symmetric(vertical: 2, horizontal: 4),
-                                    decoration: BoxDecoration(
-                                      color: event.color.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      'View',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: event.color,
-                                        fontSize: isMobile ? 7 : 8,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 4),
-                              // Remove button
-                              GestureDetector(
-                                onTap: () => _removePicture(event, imagePath),
-                                child: Container(
-                                  padding: EdgeInsets.all(2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade50,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Icon(
-                                    Icons.close,
-                                    size: isMobile ? 8 : 10,
-                                    color: Colors.red.shade400,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildHyperlinksSection(EnhancedEventBlock event, ThemeData theme, bool isMobile) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Links',
-          style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-            fontWeight: FontWeight.w600,
-            color: Colors.grey.shade700,
-          ),
-        ),
-        SizedBox(height: 8),
-        if (event.hyperlinks.isEmpty)
-          Container(
-            padding: EdgeInsets.all(isMobile ? 10 : 12),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade100,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Colors.grey.shade300,
-                style: BorderStyle.solid,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.link_outlined,
-                  color: Colors.grey.shade600,
-                  size: isMobile ? 14 : 16,
-                ),
-                SizedBox(width: 6),
-                Text(
-                  'No links',
-                  style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-                    color: Colors.grey.shade600,
-                    fontSize: isMobile ? 10 : 11,
-                  ),
-                ),
-              ],
-            ),
-          )
-        else
-          ...event.hyperlinks.map((linkData) {
-            final parts = linkData.split('|');
-            final linkTitle = parts.length > 0 ? parts[0] : 'Link';
-            final linkUrl = parts.length > 1 ? parts[1] : linkData;
-            
-            return Container(
-              margin: EdgeInsets.only(bottom: 6),
-              padding: EdgeInsets.all(isMobile ? 6 : 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: Colors.grey.shade300,
-                  width: 1,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.link,
-                        color: event.color,
-                        size: isMobile ? 12 : 14,
-                      ),
-                      SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          linkTitle,
-                          style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: event.color,
-                            fontSize: isMobile ? 9 : 10,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => _removeHyperlink(event, linkData),
-                        icon: Icon(
-                          Icons.close,
-                          size: isMobile ? 10 : 12,
-                          color: Colors.red.shade400,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(
-                          minWidth: isMobile ? 14 : 16, 
-                          minHeight: isMobile ? 14 : 16
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 2),
-                  Text(
-                    linkUrl,
-                    style: (isMobile ? theme.textTheme.bodySmall : theme.textTheme.bodyMedium)?.copyWith(
-                      color: Colors.grey.shade600,
-                      fontSize: isMobile ? 8 : 9,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-      ],
     );
   }
 
@@ -1682,25 +565,245 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
       width: double.infinity,
       margin: EdgeInsets.only(top: 20),
       child: ElevatedButton.icon(
-        onPressed: () => _addNewLesson(),
+        onPressed: _addNewLesson,
         icon: Icon(Icons.add, size: isMobile ? 20 : 24),
         label: Text(
           'Add New Lesson',
-          style: (isMobile ? theme.textTheme.titleSmall : theme.textTheme.titleMedium)?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: (isMobile ? theme.textTheme.titleSmall : theme.textTheme.titleMedium)?.copyWith(fontWeight: FontWeight.bold),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: theme.primaryColor,
           foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(vertical: isMobile ? 16 : 20),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           elevation: 4,
         ),
       ),
     );
+  }
+
+  // Event handlers
+  void _updateLessonBody(EnhancedEventBlock event, String value) {
+    setState(() {
+      final updatedEvent = event.copyWith(body: value, updatedAt: DateTime.now());
+      final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
+      if (idx != -1) _enhancedEvents[idx] = updatedEvent;
+      
+      final planIdx = _localWeeklyPlanData.indexWhere((data) => 
+        data.lessonId == event.id && data.dayIndex == widget.dayIndex
+      );
+      if (planIdx != -1) {
+        _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(content: value);
+        _saveChangesToWeeklyPlan();
+      }
+    });
+  }
+
+  void _updateLessonNotes(EnhancedEventBlock event, String value) {
+    setState(() {
+      final updatedEvent = event.copyWith(notes: value, updatedAt: DateTime.now());
+      final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
+      if (idx != -1) _enhancedEvents[idx] = updatedEvent;
+      
+      final planIdx = _localWeeklyPlanData.indexWhere((data) => 
+        data.lessonId == event.id && data.dayIndex == widget.dayIndex
+      );
+      if (planIdx != -1) {
+        _localWeeklyPlanData[planIdx] = _localWeeklyPlanData[planIdx].copyWith(notes: value);
+        _saveChangesToWeeklyPlan();
+      }
+    });
+  }
+
+  void _addPicture(EnhancedEventBlock event) async {
+    final ImageSource? source = await showDialog<ImageSource>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add Picture to ${event.subject}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(leading: Icon(Icons.camera_alt), title: Text('Take Photo'), onTap: () => Navigator.pop(context, ImageSource.camera)),
+            ListTile(leading: Icon(Icons.photo_library), title: Text('Choose from Gallery'), onTap: () => Navigator.pop(context, ImageSource.gallery)),
+            ListTile(leading: Icon(Icons.folder), title: Text('Choose File'), onTap: () => Navigator.pop(context, null)),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) {
+      final file = await ImageService.pickAnyFile();
+      if (file != null) await _processSelectedFile(event, file);
+      return;
+    }
+
+    File? imageFile;
+    if (source == ImageSource.camera) {
+      imageFile = await ImageService.pickImageFromCamera();
+    } else if (source == ImageSource.gallery) {
+      imageFile = await ImageService.pickImageFromGallery();
+    }
+
+    if (imageFile != null) {
+      await _processSelectedFile(event, imageFile);
+    }
+  }
+
+  Future<void> _processSelectedFile(EnhancedEventBlock event, File file) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          content: Row(
+            children: [CircularProgressIndicator(), SizedBox(width: 16), Text('Processing file...')],
+          ),
+        ),
+      );
+
+      final savedPath = await ImageService.saveImageToLocal(file);
+      
+      if (savedPath != null) {
+        setState(() {
+          final updatedEvent = event.copyWith(attachmentIds: [...event.attachmentIds, savedPath]);
+          final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
+          if (idx != -1) _enhancedEvents[idx] = updatedEvent;
+        });
+        
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('File added successfully!')));
+      } else {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to save file')));
+      }
+    } catch (e) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error processing file: $e')));
+    }
+  }
+
+  void _addHyperlink(EnhancedEventBlock event) {
+    String linkUrl = '';
+    String linkTitle = '';
+    final formKey = GlobalKey<FormState>();
+    final screenSize = MediaQuery.of(context).size;
+    final isMobile = screenSize.width < 600;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Add Link to ${event.subject}'),
+        content: Container(
+          width: isMobile ? double.infinity : 400,
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  decoration: InputDecoration(labelText: 'Link Title', hintText: 'e.g., Online Worksheet, Video Tutorial', border: OutlineInputBorder()),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) return 'Link title is required';
+                    if (value.trim().length > 50) return 'Title must be 50 characters or less';
+                    return null;
+                  },
+                  onChanged: (value) => linkTitle = value,
+                  autofocus: true,
+                  maxLength: 50,
+                ),
+                SizedBox(height: 16),
+                TextFormField(
+                  decoration: InputDecoration(labelText: 'Link URL', hintText: 'https://example.com/resource', border: OutlineInputBorder()),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) return 'Link URL is required';
+                    final uri = Uri.tryParse(value.trim());
+                    if (uri == null || !uri.hasAbsolutePath) return 'Please enter a valid URL';
+                    return null;
+                  },
+                  onChanged: (value) => linkUrl = value,
+                  maxLength: 500,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() == true) {
+                setState(() {
+                  final updatedEvent = event.copyWith(hyperlinks: [...event.hyperlinks, '$linkTitle|$linkUrl']);
+                  final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
+                  if (idx != -1) _enhancedEvents[idx] = updatedEvent;
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Add Link'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _removePicture(EnhancedEventBlock event, String imagePath) {
+    setState(() {
+      final updatedEvent = event.copyWith(attachmentIds: event.attachmentIds.where((path) => path != imagePath).toList());
+      final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
+      if (idx != -1) _enhancedEvents[idx] = updatedEvent;
+    });
+    ImageService.deleteLocalImage(imagePath);
+  }
+
+  void _removeHyperlink(EnhancedEventBlock event, String linkData) {
+    setState(() {
+      final updatedEvent = event.copyWith(hyperlinks: event.hyperlinks.where((link) => link != linkData).toList());
+      final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
+      if (idx != -1) _enhancedEvents[idx] = updatedEvent;
+    });
+  }
+
+  void _viewImage(String imagePath) {
+    final file = File(imagePath);
+    if (file.existsSync()) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: Text('View Image'),
+              backgroundColor: Theme.of(context).primaryColor,
+              foregroundColor: Colors.white,
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.share),
+                  onPressed: () => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image sharing not yet implemented'))),
+                ),
+              ],
+            ),
+            body: Center(
+              child: InteractiveViewer(
+                child: Image.file(
+                  file,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.broken_image, size: 64, color: Colors.grey.shade400),
+                      SizedBox(height: 16),
+                      Text('Unable to load image', style: TextStyle(color: Colors.grey.shade600)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Image not found: ${path.basename(imagePath)}')));
+    }
   }
 
   void _addNewLesson() {
@@ -1723,37 +826,19 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextFormField(
-                  decoration: InputDecoration(
-                    labelText: 'Subject *',
-                    hintText: 'e.g., Mathematics, English, Science',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Subject is required';
-                    }
-                    return null;
-                  },
+                  decoration: InputDecoration(labelText: 'Subject *', hintText: 'e.g., Mathematics, English, Science', border: OutlineInputBorder()),
+                  validator: (value) => value == null || value.trim().isEmpty ? 'Subject is required' : null,
                   onChanged: (value) => subject = value,
                   autofocus: true,
                 ),
                 SizedBox(height: 16),
                 TextFormField(
-                  decoration: InputDecoration(
-                    labelText: 'Subtitle',
-                    hintText: 'e.g., Period 1, Morning Session',
-                    border: OutlineInputBorder(),
-                  ),
+                  decoration: InputDecoration(labelText: 'Subtitle', hintText: 'e.g., Period 1, Morning Session', border: OutlineInputBorder()),
                   onChanged: (value) => subtitle = value,
                 ),
                 SizedBox(height: 16),
                 TextFormField(
-                  decoration: InputDecoration(
-                    labelText: 'Lesson Details',
-                    hintText: 'Enter lesson description, activities, notes...',
-                    border: OutlineInputBorder(),
-                    alignLabelWithHint: true,
-                  ),
+                  decoration: InputDecoration(labelText: 'Lesson Details', hintText: 'Enter lesson description, activities, notes...', border: OutlineInputBorder(), alignLabelWithHint: true),
                   onChanged: (value) => content = value,
                   maxLines: 4,
                 ),
@@ -1762,10 +847,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel')),
           ElevatedButton(
             onPressed: () {
               if (formKey.currentState?.validate() == true) {
@@ -1776,7 +858,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
                     subject: subject.trim(),
                     subtitle: subtitle.trim(),
                     body: content.trim(),
-                    color: _getColorForPeriod(_enhancedEvents.length), // Use lesson count as period
+                    color: _getColorForPeriod(_enhancedEvents.length),
                     startHour: 8 + _enhancedEvents.length,
                     startMinute: 0,
                     finishHour: 9 + _enhancedEvents.length,
@@ -1801,807 +883,48 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   }
 
   void _printDailyWorkPad() async {
-    setState(() {
-      _isGeneratingPdf = true;
-    });
+    setState(() => _isGeneratingPdf = true);
     
     try {
       final pdfFile = await PdfService.generateDailyWorkPadPdf(
         day: widget.day,
         lessons: _enhancedEvents,
-        teacherName: 'Teacher Name', // TODO: Get from user profile
+        teacherName: 'Teacher Name',
       );
       
       if (pdfFile != null) {
         await PdfService.printPdf(pdfFile);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('PDF generated successfully!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF generated successfully!')));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to generate PDF'),
-            duration: Duration(seconds: 3),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to generate PDF')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error generating PDF: $e'),
-          duration: Duration(seconds: 3),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error generating PDF: $e')));
     } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
+      setState(() => _isGeneratingPdf = false);
     }
   }
 
   void _shareDailyWorkPad() async {
-    setState(() {
-      _isGeneratingPdf = true;
-    });
+    setState(() => _isGeneratingPdf = true);
     
     try {
       final pdfFile = await PdfService.generateDailyWorkPadPdf(
         day: widget.day,
         lessons: _enhancedEvents,
-        teacherName: 'Teacher Name', // TODO: Get from user profile
+        teacherName: 'Teacher Name',
       );
       
       if (pdfFile != null) {
         await PdfService.sharePdf(pdfFile);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('PDF shared successfully!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('PDF shared successfully!')));
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to generate PDF'),
-            duration: Duration(seconds: 3),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to generate PDF')));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error sharing PDF: $e'),
-          duration: Duration(seconds: 3),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error sharing PDF: $e')));
     } finally {
-      setState(() {
-        _isGeneratingPdf = false;
-      });
+      setState(() => _isGeneratingPdf = false);
     }
-  }
-
-  void _addPicture(EnhancedEventBlock event) async {
-    final screenSize = MediaQuery.of(context).size;
-    final isMobile = screenSize.width < 600;
-    
-    // Show image source selection
-    final ImageSource? source = await showDialog<ImageSource>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add Picture to ${event.subject}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.camera_alt),
-              title: Text('Take Photo'),
-              onTap: () => Navigator.pop(context, ImageSource.camera),
-            ),
-            ListTile(
-              leading: Icon(Icons.photo_library),
-              title: Text('Choose from Gallery'),
-              onTap: () => Navigator.pop(context, ImageSource.gallery),
-            ),
-            ListTile(
-              leading: Icon(Icons.folder),
-              title: Text('Choose File'),
-              onTap: () => Navigator.pop(context, null), // Will handle file picker
-            ),
-          ],
-        ),
-      ),
-    );
-
-    if (source == null) {
-      // Handle file picker
-      final file = await ImageService.pickAnyFile();
-      if (file != null) {
-        await _processSelectedFile(event, file);
-      }
-      return;
-    }
-
-    File? imageFile;
-    if (source == ImageSource.camera) {
-      imageFile = await ImageService.pickImageFromCamera();
-    } else if (source == ImageSource.gallery) {
-      imageFile = await ImageService.pickImageFromGallery();
-    }
-
-    if (imageFile != null) {
-      await _processSelectedFile(event, imageFile);
-    }
-  }
-
-  Future<void> _processSelectedFile(EnhancedEventBlock event, File file) async {
-    try {
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => AlertDialog(
-          content: Row(
-            children: [
-              CircularProgressIndicator(),
-              SizedBox(width: 16),
-              Text('Processing file...'),
-            ],
-          ),
-        ),
-      );
-
-      // Save file to local storage
-      final savedPath = await ImageService.saveImageToLocal(file);
-      
-      if (savedPath != null) {
-        setState(() {
-          final updatedEvent = event.copyWith(
-            attachmentIds: [...event.attachmentIds, savedPath],
-          );
-          final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
-          if (idx != -1) _enhancedEvents[idx] = updatedEvent;
-        });
-        
-        Navigator.pop(context); // Close loading dialog
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('File added successfully!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      } else {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save file'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error processing file: $e'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-    }
-  }
-
-  void _addHyperlink(EnhancedEventBlock event) {
-    String linkUrl = '';
-    String linkTitle = '';
-    final formKey = GlobalKey<FormState>();
-    final screenSize = MediaQuery.of(context).size;
-    final isMobile = screenSize.width < 600;
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Add Link to ${event.subject}'),
-        content: Container(
-          width: isMobile ? double.infinity : 400,
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  decoration: InputDecoration(
-                    labelText: 'Link Title',
-                    hintText: 'e.g., Online Worksheet, Video Tutorial',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Link title is required';
-                    }
-                    if (value.trim().length > 50) {
-                      return 'Title must be 50 characters or less';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) => linkTitle = value,
-                  autofocus: true,
-                  maxLength: 50,
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  decoration: InputDecoration(
-                    labelText: 'Link URL',
-                    hintText: 'https://example.com/resource',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Link URL is required';
-                    }
-                    final uri = Uri.tryParse(value.trim());
-                    if (uri == null || !uri.hasAbsolutePath) {
-                      return 'Please enter a valid URL';
-                    }
-                    return null;
-                  },
-                  onChanged: (value) => linkUrl = value,
-                  maxLength: 500,
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState?.validate() == true) {
-                setState(() {
-                  // Add the link to the event's hyperlinks
-                  final updatedEvent = event.copyWith(
-                    hyperlinks: [...event.hyperlinks, '$linkTitle|$linkUrl'],
-                  );
-                  final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
-                  if (idx != -1) _enhancedEvents[idx] = updatedEvent;
-                });
-                Navigator.pop(context);
-              }
-            },
-            child: Text('Add Link'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _removePicture(EnhancedEventBlock event, String imagePath) {
-    setState(() {
-      final updatedEvent = event.copyWith(
-        attachmentIds: event.attachmentIds.where((path) => path != imagePath).toList(),
-      );
-      final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
-      if (idx != -1) _enhancedEvents[idx] = updatedEvent;
-    });
-    
-    // Delete the file from local storage
-    ImageService.deleteLocalImage(imagePath);
-  }
-
-  void _removeHyperlink(EnhancedEventBlock event, String linkData) {
-    setState(() {
-      final updatedEvent = event.copyWith(
-        hyperlinks: event.hyperlinks.where((link) => link != linkData).toList(),
-      );
-      final idx = _enhancedEvents.indexWhere((e) => e.id == event.id);
-      if (idx != -1) _enhancedEvents[idx] = updatedEvent;
-    });
-  }
-
-  void _viewImage(String imagePath) {
-    final file = File(imagePath);
-    if (file.existsSync()) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => Scaffold(
-            appBar: AppBar(
-              title: Text('View Image'),
-              backgroundColor: Theme.of(context).primaryColor,
-              foregroundColor: Colors.white,
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.share),
-                  onPressed: () {
-                    // TODO: Implement image sharing
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Image sharing not yet implemented')),
-                    );
-                  },
-                ),
-              ],
-            ),
-            body: Center(
-              child: InteractiveViewer(
-                child: Image.file(
-                  file,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.broken_image,
-                          size: 64,
-                          color: Colors.grey.shade400,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Unable to load image',
-                          style: TextStyle(color: Colors.grey.shade600),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Image not found: ${path.basename(imagePath)}'),
-          duration: Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-}
-
-class _EditLessonDialog extends StatefulWidget {
-  final EnhancedEventBlock event;
-  final Function(EnhancedEventBlock) onSave;
-
-  const _EditLessonDialog({
-    required this.event,
-    required this.onSave,
-  });
-
-  @override
-  _EditLessonDialogState createState() => _EditLessonDialogState();
-}
-
-class _EditLessonDialogState extends State<_EditLessonDialog> {
-  late TextEditingController _detailsController;
-  late TextEditingController _notesController;
-  late TextEditingController _linkUrlController;
-  late TextEditingController _linkTitleController;
-  
-  List<Attachment> _attachments = [];
-  List<Hyperlink> _hyperlinks = [];
-  List<CurriculumOutcome> _curriculumOutcomes = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _detailsController = TextEditingController(text: widget.event.body);
-    _notesController = TextEditingController(text: widget.event.notes);
-    _linkUrlController = TextEditingController();
-    _linkTitleController = TextEditingController();
-    
-    // Initialize existing data
-    _attachments = List.from(widget.event.attachments);
-    _hyperlinks = List.from(widget.event.hyperlinks);
-    _curriculumOutcomes = List.from(widget.event.curriculumOutcomes);
-  }
-
-  @override
-  void dispose() {
-    _detailsController.dispose();
-    _notesController.dispose();
-    _linkUrlController.dispose();
-    _linkTitleController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final screenSize = MediaQuery.of(context).size;
-    final isMobile = screenSize.width < 600;
-    
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: isMobile ? screenSize.width * 0.9 : 600,
-        constraints: BoxConstraints(maxHeight: screenSize.height * 0.8),
-        child: Column(
-          children: [
-            // Header
-            Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: widget.event.color.withOpacity(0.1),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  topRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.edit, color: widget.event.color),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Edit ${widget.event.subject}',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: widget.event.color,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-            ),
-            
-            // Content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Lesson Details
-                    _buildSection(
-                      'Lesson Details',
-                      Icons.description,
-                      Column(
-                        children: [
-                          TextFormField(
-                            controller: _detailsController,
-                            decoration: InputDecoration(
-                              labelText: 'Lesson Description',
-                              hintText: 'Enter detailed lesson description...',
-                              border: OutlineInputBorder(),
-                            ),
-                            maxLines: 4,
-                          ),
-                          SizedBox(height: 16),
-                          TextFormField(
-                            controller: _notesController,
-                            decoration: InputDecoration(
-                              labelText: 'Teacher Notes',
-                              hintText: 'Add your notes, reminders, or additional details...',
-                              border: OutlineInputBorder(),
-                            ),
-                            maxLines: 3,
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    SizedBox(height: 24),
-                    
-                    // Attachments
-                    _buildSection(
-                      'Attachments',
-                      Icons.attach_file,
-                      Column(
-                        children: [
-                          // Add attachment button
-                          ElevatedButton.icon(
-                            onPressed: _addAttachment,
-                            icon: Icon(Icons.add),
-                            label: Text('Add File'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue[600],
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                          if (_attachments.isNotEmpty) ...[
-                            SizedBox(height: 16),
-                            ..._attachments.map((attachment) => _buildAttachmentTile(attachment)).toList(),
-                          ],
-                        ],
-                      ),
-                    ),
-                    
-                    SizedBox(height: 24),
-                    
-                    // Hyperlinks
-                    _buildSection(
-                      'Links',
-                      Icons.link,
-                      Column(
-                        children: [
-                          // Add link form
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _linkTitleController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Link Title',
-                                    hintText: 'e.g., YouTube Video',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                ),
-                              ),
-                              SizedBox(width: 12),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _linkUrlController,
-                                  decoration: InputDecoration(
-                                    labelText: 'URL',
-                                    hintText: 'https://...',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: 12),
-                          ElevatedButton.icon(
-                            onPressed: _addLink,
-                            icon: Icon(Icons.add),
-                            label: Text('Add Link'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green[600],
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                          if (_hyperlinks.isNotEmpty) ...[
-                            SizedBox(height: 16),
-                            ..._hyperlinks.map((link) => _buildLinkTile(link)).toList(),
-                          ],
-                        ],
-                      ),
-                    ),
-                    
-                    SizedBox(height: 24),
-                    
-                    // Curriculum Outcomes
-                    _buildSection(
-                      'Curriculum Outcomes',
-                      Icons.school,
-                      Column(
-                        children: [
-                          Text(
-                            'Selected outcomes from sidebar will appear here',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey[600],
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                          if (_curriculumOutcomes.isNotEmpty) ...[
-                            SizedBox(height: 16),
-                            ..._curriculumOutcomes.map((outcome) => _buildOutcomeTile(outcome)).toList(),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            
-            // Footer with save button
-            Container(
-              padding: EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.grey[50],
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(16),
-                  bottomRight: Radius.circular(16),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('Cancel'),
-                  ),
-                  SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _saveChanges,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: widget.event.color,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: Text('Save Changes'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSection(String title, IconData icon, Widget content) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, color: Colors.grey[600], size: 20),
-            SizedBox(width: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
-              ),
-            ),
-          ],
-        ),
-        SizedBox(height: 12),
-        content,
-      ],
-    );
-  }
-
-  Widget _buildAttachmentTile(Attachment attachment) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.attach_file, color: Colors.blue[600]),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              attachment.name,
-              style: TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.delete, color: Colors.red[600]),
-            onPressed: () => _removeAttachment(attachment),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLinkTile(Hyperlink link) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.link, color: Colors.green[600]),
-          SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  link.title,
-                  style: TextStyle(fontWeight: FontWeight.w500),
-                ),
-                Text(
-                  link.url,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: Icon(Icons.delete, color: Colors.red[600]),
-            onPressed: () => _removeLink(link),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOutcomeTile(CurriculumOutcome outcome) {
-    return Container(
-      margin: EdgeInsets.only(bottom: 8),
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.purple[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.purple[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            outcome.code,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.purple[700],
-            ),
-          ),
-          SizedBox(height: 4),
-          Text(
-            outcome.description,
-            style: TextStyle(fontSize: 12),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _addAttachment() {
-    // TODO: Implement file picker
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('File picker coming soon')),
-    );
-  }
-
-  void _removeAttachment(Attachment attachment) {
-    setState(() {
-      _attachments.remove(attachment);
-    });
-  }
-
-  void _addLink() {
-    if (_linkTitleController.text.isNotEmpty && _linkUrlController.text.isNotEmpty) {
-      setState(() {
-        _hyperlinks.add(Hyperlink(
-          id: UniqueKey().toString(),
-          title: _linkTitleController.text,
-          url: _linkUrlController.text,
-        ));
-        _linkTitleController.clear();
-        _linkUrlController.clear();
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter both title and URL')),
-      );
-    }
-  }
-
-  void _removeLink(Hyperlink link) {
-    setState(() {
-      _hyperlinks.remove(link);
-    });
-  }
-
-  void _saveChanges() {
-    final updatedEvent = widget.event.copyWith(
-      body: _detailsController.text,
-      notes: _notesController.text,
-      attachments: _attachments,
-      hyperlinks: _hyperlinks.map((link) => '${link.title}|${link.url}').toList(),
-      curriculumOutcomes: _curriculumOutcomes,
-      updatedAt: DateTime.now(),
-    );
-    
-    widget.onSave(updatedEvent);
-    Navigator.pop(context);
   }
 }

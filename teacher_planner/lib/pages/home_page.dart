@@ -8,6 +8,7 @@ import 'day_view.dart';
 import 'enhanced_day_detail_page.dart';
 import 'long_term_planning_page.dart';
 import 'settings_page.dart';
+import 'user_profile_page.dart'; // Added import for UserProfilePage
 
 class HomePage extends StatefulWidget {
   @override
@@ -41,6 +42,16 @@ class _HomePageState extends State<HomePage> {
               );
             },
             tooltip: 'Settings',
+          ),
+          IconButton(
+            icon: Icon(Icons.person),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => UserProfilePage()),
+              );
+            },
+            tooltip: 'Profile',
           ),
         ],
       ),

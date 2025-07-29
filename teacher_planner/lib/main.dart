@@ -9,6 +9,7 @@ import 'pages/home_page.dart';
 import 'utils/responsive_utils.dart';
 import 'services/cache_service.dart';
 import 'services/lazy_loading_service.dart';
+import 'services/auth_service.dart';
 import 'providers/theme_provider.dart';
 
 void main() async {
@@ -29,9 +30,10 @@ void main() async {
     debugPrint('❌ Error initializing Supabase: $e');
   }
   
-  // Initialize caching and lazy loading services
+  // Initialize services
   await CacheService.instance.initialize();
   await LazyLoadingService.instance.initialize();
+  await AuthService.instance.initialize();
   
   runApp(MyApp());
 }
@@ -43,13 +45,13 @@ class MyApp extends StatelessWidget {
       create: (_) => ThemeProvider(),
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
-          return MaterialApp(
-            title: 'Teacher Planner',
+    return MaterialApp(
+      title: 'Teacher Planner',
             debugShowCheckedModeBanner: false,
             themeMode: themeProvider.themeMode,
             theme: _buildLightTheme(),
             darkTheme: _buildDarkTheme(),
-            home: HomePage(),
+            home: HomePage(), // Temporarily disabled auth
           );
         },
       ),
@@ -59,7 +61,7 @@ class MyApp extends StatelessWidget {
   ThemeData _buildLightTheme() {
     return ThemeData(
       brightness: Brightness.light,
-      primarySwatch: Colors.blue,
+        primarySwatch: Colors.blue,
       visualDensity: VisualDensity.adaptivePlatformDensity,
       scaffoldBackgroundColor: Colors.grey[50],
       // Apply Shadows Into Light Two font theme throughout the app
@@ -163,7 +165,7 @@ class MyApp extends StatelessWidget {
             fontSize: 14,
             fontWeight: FontWeight.w500,
             fontFamily: 'Roboto',
-            color: Colors.blue,
+          color: Colors.blue,
           ),
         ),
       ),
