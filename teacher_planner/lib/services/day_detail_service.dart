@@ -1,8 +1,11 @@
 // lib/services/day_detail_service.dart
 
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/curriculum_models.dart';
+import '../models/event_block.dart';
 import '../models/weekly_plan_data.dart';
 import '../services/image_service.dart';
 import '../services/pdf_service.dart';
@@ -89,25 +92,30 @@ class DayDetailService {
     )).toList();
   }
 
-  static Future<File?> pickImage(ImageSource source) async {
-    if (source == ImageSource.camera) {
-      return await ImageService.pickImageFromCamera();
-    } else if (source == ImageSource.gallery) {
-      return await ImageService.pickImageFromGallery();
+  static Future<XFile?> pickImage(ImageSource source) async {
+    return await ImageService.instance.pickImage(source: source);
+  }
+
+  static Future<XFile?> pickAnyFile() async {
+    // For now, just pick from gallery as a fallback
+    return await ImageService.instance.pickImage(source: ImageSource.gallery);
+  }
+
+  static Future<String?> saveImageToLocal(XFile imageFile) async {
+    return await ImageService.instance.saveImageLocally(imageFile: imageFile);
+  }
+
+  static Future<bool> deleteLocalImage(String imagePath) async {
+    try {
+      final file = File(imagePath);
+      if (await file.exists()) {
+        await file.delete();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
     }
-    return null;
-  }
-
-  static Future<File?> pickAnyFile() async {
-    return await ImageService.pickAnyFile();
-  }
-
-  static Future<String?> saveImageToLocal(File file) async {
-    return await ImageService.saveImageToLocal(file);
-  }
-
-  static void deleteLocalImage(String imagePath) {
-    ImageService.deleteLocalImage(imagePath);
   }
 
   static Future<Uint8List?> generateDailyWorkPadPdf({
@@ -115,19 +123,36 @@ class DayDetailService {
     required List<EnhancedEventBlock> lessons,
     required String teacherName,
   }) async {
-    return await PdfService.generateDailyWorkPadPdf(
-      day: day,
-      lessons: lessons,
+    // Convert lessons to the format expected by PdfService
+    final lessonMaps = lessons.map((lesson) => {
+      'title': lesson.subject,
+      'period': 'Period ${lesson.periodIndex + 1}',
+      'body': lesson.body,
+      'notes': lesson.notes,
+    }).toList();
+
+    return await PdfService.instance.generateDailyPlanPdf(
+      title: '$day - Daily Work Pad',
+      lesson: lessonMaps.isNotEmpty ? lessonMaps.first : {},
+      date: DateTime.now(),
       teacherName: teacherName,
+      schoolName: 'School Name',
     );
   }
 
-  static Future<void> printPdf(Uint8List pdfFile) async {
-    await PdfService.printPdf(pdfFile);
+  static Future<void> printPdf(Uint8List pdfBytes) async {
+    // For now, just save locally
+    await PdfService.instance.savePdfLocally(
+      pdfBytes: pdfBytes,
+      fileName: 'daily_work_pad_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
   }
 
-  static Future<void> sharePdf(Uint8List pdfFile) async {
-    await PdfService.sharePdf(pdfFile);
+  static Future<void> sharePdf(Uint8List pdfBytes) async {
+    await PdfService.instance.sharePdf(
+      pdfBytes: pdfBytes,
+      fileName: 'daily_work_pad_${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
   }
 
   static EnhancedEventBlock createNewLesson({

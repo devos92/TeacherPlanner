@@ -13,7 +13,6 @@ import '../widgets/lesson_details_section.dart';
 import '../widgets/teacher_notes_section.dart';
 import '../widgets/resources_section_widget.dart';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:path/path.dart' as path;
 
 class EnhancedDayDetailPage extends StatefulWidget {
@@ -39,8 +38,6 @@ class EnhancedDayDetailPage extends StatefulWidget {
 class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   late List<EnhancedEventBlock> _enhancedEvents;
   late List<WeeklyPlanData> _localWeeklyPlanData;
-  List<String> _selectedOutcomeCodes = [];
-  List<CurriculumOutcome> _selectedOutcomes = [];
   bool _showCurriculumSidebar = true;
   bool _isGeneratingPdf = false;
 
@@ -293,7 +290,7 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
   }
 
   // Event handlers
-  void _handleCurriculumSelection(List<CurriculumOutcome> outcomes) {
+  void _handleCurriculumSelection(List<CurriculumData> outcomes) {
     final newOutcomes = outcomes.map((outcome) => CurriculumOutcome(
       id: outcome.id,
       code: outcome.code ?? '',
@@ -302,8 +299,8 @@ class _EnhancedDayDetailPageState extends State<EnhancedDayDetailPage> {
     )).toList();
     
     setState(() {
-      _selectedOutcomes = newOutcomes;
-      _selectedOutcomeCodes = newOutcomes.map((o) => o.code).toList();
+      // _selectedOutcomes = newOutcomes; // Removed unused field
+      // _selectedOutcomeCodes = newOutcomes.map((o) => o.code).toList(); // Removed unused field
     });
   }
 
