@@ -90,6 +90,11 @@ class AuthService {
         emailRedirectTo: null,
       );
 
+      // Supabase will handle email confirmation automatically
+      if (authResponse.user != null) {
+        debugPrint('✅ User registered successfully');
+      }
+
       if (authResponse.user == null) {
         return AuthResult.error('Registration failed. Please try again.', errorType: 'registration-failed');
       }

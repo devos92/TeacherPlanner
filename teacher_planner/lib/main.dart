@@ -61,24 +61,23 @@ class MyApp extends StatelessWidget {
       useMaterial3: true,
       brightness: isDark ? Brightness.dark : Brightness.light,
       colorScheme: isDark ? _darkColorScheme : _lightColorScheme,
-      textTheme: GoogleFonts.shadowsIntoLightTwoTextTheme().copyWith(
-        // Override specific text styles to use normal font for input/settings
-        bodyLarge: GoogleFonts.shadowsIntoLightTwo().copyWith(
-          fontSize: 16,
-        ),
-        bodyMedium: GoogleFonts.shadowsIntoLightTwo().copyWith(
-          fontSize: 14,
-        ),
-        labelLarge: GoogleFonts.shadowsIntoLightTwo().copyWith(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        // Use Roboto for input fields and dialogs
-        titleMedium: const TextStyle(fontFamily: 'Roboto'),
-        titleSmall: const TextStyle(fontFamily: 'Roboto'),
-        bodySmall: const TextStyle(fontFamily: 'Roboto'),
-        labelMedium: const TextStyle(fontFamily: 'Roboto'),
-        labelSmall: const TextStyle(fontFamily: 'Roboto'),
+      textTheme: ThemeData.light().textTheme.copyWith(
+        // Use normal Roboto font for all text
+        displayLarge: TextStyle(fontFamily: 'Roboto'),
+        displayMedium: TextStyle(fontFamily: 'Roboto'),
+        displaySmall: TextStyle(fontFamily: 'Roboto'),
+        headlineLarge: TextStyle(fontFamily: 'Roboto'),
+        headlineMedium: TextStyle(fontFamily: 'Roboto'),
+        headlineSmall: TextStyle(fontFamily: 'Roboto'),
+        titleLarge: TextStyle(fontFamily: 'Roboto'),
+        titleMedium: TextStyle(fontFamily: 'Roboto'),
+        titleSmall: TextStyle(fontFamily: 'Roboto'),
+        bodyLarge: TextStyle(fontFamily: 'Roboto'),
+        bodyMedium: TextStyle(fontFamily: 'Roboto'),
+        bodySmall: TextStyle(fontFamily: 'Roboto'),
+        labelLarge: TextStyle(fontFamily: 'Roboto'),
+        labelMedium: TextStyle(fontFamily: 'Roboto'),
+        labelSmall: TextStyle(fontFamily: 'Roboto'),
       ),
       inputDecorationTheme: InputDecorationTheme(
         labelStyle: const TextStyle(fontFamily: 'Roboto'),
@@ -95,9 +94,10 @@ class MyApp extends StatelessWidget {
         ),
       ),
       dialogTheme: DialogThemeData(
-        titleTextStyle: GoogleFonts.shadowsIntoLightTwo().copyWith(
+        titleTextStyle: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
+          fontFamily: 'Roboto',
         ),
         contentTextStyle: const TextStyle(fontFamily: 'Roboto'),
         shape: RoundedRectangleBorder(

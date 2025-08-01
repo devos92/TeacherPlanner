@@ -5,6 +5,7 @@ import '../models/weekly_plan_data.dart';
 import '../widgets/lesson_dialogs.dart';
 import '../widgets/lesson_cell_widgets.dart';
 import '../config/app_fonts.dart';
+import '../services/lesson_database_service.dart';
 
 class WeeklyPlanWidget extends StatefulWidget {
   final int periods;
@@ -16,6 +17,7 @@ class WeeklyPlanWidget extends StatefulWidget {
   final Function(List<WeeklyPlanData>) onPlanChanged;
   final VoidCallback? onPreviousWeek;
   final VoidCallback? onNextWeek;
+  final Function(bool isVertical)? onLayoutChanged;
 
   const WeeklyPlanWidget({
     Key? key,
@@ -28,6 +30,7 @@ class WeeklyPlanWidget extends StatefulWidget {
     required this.onPlanChanged,
     this.onPreviousWeek,
     this.onNextWeek,
+    this.onLayoutChanged,
   }) : super(key: key);
 
   @override
@@ -36,7 +39,6 @@ class WeeklyPlanWidget extends StatefulWidget {
 
 class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
   List<WeeklyPlanData> _planData = [];
-  bool _isHorizontalView = false;
   DateTime _currentWeek = DateTime.now();
   int _nextLessonId = 1;
 
@@ -119,22 +121,63 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
     }
   }
 
-  void _loadWeekData() {
+  void _loadWeekData() async {
     try {
       debugPrint('Loading week data for week starting: ${widget.weekStartDate}');
-      // Initialize _planData with initialData if provided
-      if (widget.initialData != null) {
-        _planData = List.from(widget.initialData!);
+      
+      if (widget.weekStartDate != null) {
+        final loadedData = await LessonDatabaseService.loadCompleteWeeklyPlan(widget.weekStartDate!);
+        
+        if (loadedData.isNotEmpty) {
+          setState(() {
+            _planData = loadedData;
+          });
+          debugPrint('Successfully loaded ${loadedData.length} plan items');
+        } else {
+          // Initialize with empty data if no data found
+          if (widget.initialData != null) {
+            _planData = List.from(widget.initialData!);
+          } else {
+            _initializeEmptyCells();
+          }
+        }
+      } else {
+        // Initialize with initialData if provided
+        if (widget.initialData != null) {
+          _planData = List.from(widget.initialData!);
+        } else {
+          _initializeEmptyCells();
+        }
       }
     } catch (e) {
       debugPrint('Error loading week data: $e');
+      // Fallback to initialData or empty cells
+      if (widget.initialData != null) {
+        _planData = List.from(widget.initialData!);
+      } else {
+        _initializeEmptyCells();
+      }
     }
   }
 
-  void _saveWeekData() {
+  void _saveWeekData() async {
     try {
       debugPrint('Saving week data for week starting: ${widget.weekStartDate}');
       debugPrint('Total lessons: ${_planData.where((d) => d.isLesson).length}');
+      
+      if (widget.weekStartDate != null) {
+        final success = await LessonDatabaseService.saveCompleteWeeklyPlan(
+          _planData,
+          widget.weekStartDate!,
+          widget.periods,
+        );
+        
+        if (success) {
+          debugPrint('Successfully saved weekly plan data');
+        } else {
+          debugPrint('Failed to save weekly plan data');
+        }
+      }
     } catch (e) {
       debugPrint('Error saving week data: $e');
     }
@@ -389,7 +432,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
               children: [
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _isHorizontalView = false),
+                    onTap: () => widget.onLayoutChanged?.call(true),
                     child: AnimatedContainer(
                       duration: Duration(milliseconds: 200),
                       padding: EdgeInsets.symmetric(
@@ -397,7 +440,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                         horizontal: 16,
                       ),
                       decoration: BoxDecoration(
-                        color: !_isHorizontalView ? Colors.blue[600] : Colors.transparent,
+                        color: widget.isVerticalLayout ? Colors.blue[600] : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -424,7 +467,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                 ),
                 Expanded(
                   child: GestureDetector(
-                    onTap: () => setState(() => _isHorizontalView = true),
+                    onTap: () => widget.onLayoutChanged?.call(false),
                     child: AnimatedContainer(
                       duration: Duration(milliseconds: 200),
                       padding: EdgeInsets.symmetric(
@@ -432,7 +475,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                         horizontal: 16,
                       ),
                       decoration: BoxDecoration(
-                        color: _isHorizontalView ? Colors.blue[600] : Colors.transparent,
+                        color: !widget.isVerticalLayout ? Colors.blue[600] : Colors.transparent,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Row(
@@ -476,7 +519,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                   }
                 }
               },
-              child: _isHorizontalView ? _buildHorizontalView() : _buildVerticalView(),
+              child: widget.isVerticalLayout ? _buildVerticalView() : _buildHorizontalView(),
             ),
           ),
         ],
@@ -557,14 +600,15 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                       bottomLeft: Radius.circular(16),
                     ),
                   ),
-                  child: Text(
-                    'Period',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: fontSize,
-                      color: theme.primaryColor.withOpacity(0.8),
-                    ),
-                  ),
+                                     child: Text(
+                     'Period',
+                     style: TextStyle(
+                       fontWeight: FontWeight.bold,
+                       fontSize: fontSize,
+                       color: theme.primaryColor.withOpacity(0.8),
+                       fontFamily: 'Roboto',
+                     ),
+                   ),
                 ),
                 ...List.generate(5, (dayIndex) => Expanded(
             child: _buildDayHeader(dayIndex, headerHeight, fontSize, smallFontSize, theme),
@@ -600,9 +644,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                             children: [
                               Text(
                                 _dayNames[dayIndex],
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
+                                style: AppFonts.weekDayHeader.copyWith(
                                   fontSize: fontSize,
                                   shadows: [
                                     Shadow(
@@ -701,14 +743,15 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                       bottomLeft: Radius.circular(16),
                     ),
                   ),
-                  child: Text(
-                    'Day',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      fontSize: fontSize,
-                      color: theme.primaryColor.withOpacity(0.8),
-                    ),
-                  ),
+                                     child: Text(
+                     'Day',
+                     style: TextStyle(
+                       fontWeight: FontWeight.bold,
+                       fontSize: fontSize,
+                       color: theme.primaryColor.withOpacity(0.8),
+                       fontFamily: 'Roboto',
+                     ),
+                   ),
                 ),
                 ...List.generate(widget.periods * 2 - 1, (index) {
             final isGap = index % 2 == 1;
@@ -751,14 +794,15 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                     // Removed boxShadow here
                         ),
                         child: Center(
-                          child: Text(
-                            'P${periodIndex + 1}',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                              color: theme.primaryColor.withOpacity(0.8),
-                        fontSize: fontSize - 2,
-                            ),
-                          ),
+                                                   child: Text(
+                           'P${periodIndex + 1}',
+                           style: TextStyle(
+                             fontWeight: FontWeight.bold,
+                             color: theme.primaryColor.withOpacity(0.8),
+                             fontSize: fontSize - 2,
+                             fontFamily: 'Roboto',
+                           ),
+                         ),
                         ),
                       ),
                     );
@@ -801,13 +845,15 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                 width: 1,
               ),
             ),
-            child: Text(
-              '${periodIndex + 1}',
-              style: AppFonts.periodLabel.copyWith(
-                color: theme.primaryColor.withOpacity(0.8),
-                fontSize: smallFontSize + 8,
-              ),
-            ),
+                         child: Text(
+               '${periodIndex + 1}',
+               style: TextStyle(
+                 color: theme.primaryColor.withOpacity(0.8),
+                 fontSize: smallFontSize + 8,
+                 fontWeight: FontWeight.w600,
+                 fontFamily: 'Roboto',
+               ),
+             ),
           ),
           
           // Day cells with color strips and drag/drop functionality
@@ -861,9 +907,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                   children: [
                     Text(
                       _dayNames[dayIndex],
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                      style: AppFonts.weekDayHeader.copyWith(
                         fontSize: smallFontSize + 2,
                         shadows: [
                           Shadow(
@@ -1061,46 +1105,111 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
   }
 
   Widget _buildFullWeekEventGap(int periodIndex, ThemeData theme, bool isTablet, double periodLabelWidth, double smallFontSize) {
-    return Container(
-      height: 40,
-      margin: EdgeInsets.only(bottom: 6),
-      child: Row(
-        children: [
-          Container(
-            width: periodLabelWidth,
-            height: 40,
-          ),
-          ...List.generate(5, (dayIndex) {
-            return Expanded(
-              child: Container(
-                height: 40,
-                margin: EdgeInsets.only(left: 3, right: 3),
-                child: DragTarget<WeeklyPlanData>(
-                  onWillAcceptWithDetails: (details) {
-                    final draggedData = details.data;
-                    return draggedData.isFullWeekEvent;
-                  },
-                  onAcceptWithDetails: (details) {
-                    // Handle full week event drop
-                  },
-                  builder: (context, candidateData, rejectedData) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(6),
-                        border: candidateData.isNotEmpty 
-                          ? Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1)
-                          : null,
-                      ),
-                    );
-                  },
+    // Check if there's a full week event for this period
+    final fullWeekEvents = _planData.where((data) => 
+      data.isFullWeekEvent && data.periodIndex == periodIndex
+    ).toList();
+    
+    if (fullWeekEvents.isEmpty) {
+      // No full week event for this period, show empty gap
+      return Container(
+        height: 40,
+        margin: EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            Container(
+              width: periodLabelWidth,
+              height: 40,
+            ),
+            ...List.generate(5, (dayIndex) {
+              return Expanded(
+                child: Container(
+                  height: 40,
+                  margin: EdgeInsets.only(left: 3, right: 3),
+                  child: DragTarget<WeeklyPlanData>(
+                    onWillAcceptWithDetails: (details) {
+                      final draggedData = details.data;
+                      return draggedData.isFullWeekEvent;
+                    },
+                    onAcceptWithDetails: (details) {
+                      // Handle full week event drop
+                    },
+                    builder: (context, candidateData, rejectedData) {
+                      return Container(
+                        decoration: BoxDecoration(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: candidateData.isNotEmpty 
+                            ? Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1)
+                            : null,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
+              );
+            }),
+          ],
+        ),
+      );
+    } else {
+      // Show the full week event
+      final event = fullWeekEvents.first;
+      return Container(
+        height: 40,
+        margin: EdgeInsets.only(bottom: 6),
+        child: Row(
+          children: [
+            Container(
+              width: periodLabelWidth,
+              height: 40,
+              alignment: Alignment.center,
+                             child: Text(
+                 'Full Week',
+                 style: TextStyle(
+                   fontSize: smallFontSize,
+                   color: Colors.grey[600],
+                   fontWeight: FontWeight.w600,
+                   fontFamily: 'Roboto',
+                 ),
+               ),
+            ),
+            ...List.generate(5, (dayIndex) {
+              return Expanded(
+                child: Container(
+                  height: 40,
+                  margin: EdgeInsets.only(left: 3, right: 3),
+                  decoration: BoxDecoration(
+                    color: event.lessonColor ?? Colors.orange,
+                    borderRadius: BorderRadius.circular(6),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 2,
+                        offset: Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Center(
+                                         child: Text(
+                       event.content,
+                       style: TextStyle(
+                         fontSize: smallFontSize - 1,
+                         color: Colors.white,
+                         fontWeight: FontWeight.w600,
+                         fontFamily: 'Roboto',
+                       ),
+                       textAlign: TextAlign.center,
+                       overflow: TextOverflow.ellipsis,
+                     ),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      );
+    }
   }
 
   void addFullWeekEvent() {
@@ -1230,10 +1339,15 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
 
   void _createFullWeekEvent(String eventName, int periodIndex) {
     setState(() {
+      // Remove any existing full week events for this period
+      _planData.removeWhere((data) => 
+        data.isFullWeekEvent && data.periodIndex == periodIndex
+      );
+      
       // Add the event to all 5 weekdays
-                    for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
-                      _planData.add(WeeklyPlanData(
-                        dayIndex: dayIndex,
+      for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
+        _planData.add(WeeklyPlanData(
+          dayIndex: dayIndex,
           periodIndex: periodIndex,
           content: eventName,
           subject: eventName,
@@ -1241,27 +1355,27 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
           lessonId: 'fullweek_${eventName.toLowerCase()}_${periodIndex}_$dayIndex',
           date: widget.weekStartDate?.add(Duration(days: dayIndex)) ?? DateTime.now(),
           isLesson: false,
-                        isFullWeekEvent: true,
+          isFullWeekEvent: true,
           subLessons: [],
           lessonColor: Colors.orange, // Orange color for full week events
-                      ));
-                    }
+        ));
+      }
       
       // Notify parent of changes
       widget.onPlanChanged(_planData);
-                  });
-                  
+    });
+    
     // Save the data
-                  _saveWeekData();
-                  
+    _saveWeekData();
+    
     // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$eventName added to all days in Period ${periodIndex + 1}'),
         backgroundColor: Colors.green,
-                    ),
-                  );
-                }
+      ),
+    );
+  }
 
   void _previousWeek() {
     if (widget.onPreviousWeek != null) {

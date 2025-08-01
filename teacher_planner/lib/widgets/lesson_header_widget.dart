@@ -48,10 +48,11 @@ class LessonHeaderWidget extends StatelessWidget {
       ),
       child: Text(
         'Period ${event.periodIndex + 1}',
-        style: AppFonts.labelMedium.copyWith(
+        style: TextStyle(
           color: event.color,
           fontSize: isTablet ? 14 : 12,
           fontWeight: FontWeight.w600,
+          fontFamily: 'Roboto',
         ),
       ),
     );
@@ -61,9 +62,10 @@ class LessonHeaderWidget extends StatelessWidget {
     return Expanded(
       child: Text(
         event.headerText?.isNotEmpty == true ? event.headerText! : event.subject,
-        style: AppFonts.lessonTitle.copyWith(
+        style: TextStyle(
           fontSize: isTablet ? 22 : 18,
           color: Colors.grey[900],
+          fontFamily: 'Roboto',
         ),
       ),
     );

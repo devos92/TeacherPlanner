@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../services/email_service.dart';
 import '../models/user_model.dart';
@@ -171,10 +172,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
                 children: [
                   Text(
                     _currentUser?.fullName ?? 'User',
-                    style: GoogleFonts.shadowsIntoLightTwo(
+                    style: TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).textTheme.bodyLarge?.color,
+                      fontFamily: 'Roboto',
                     ),
                   ),
                   SizedBox(height: 4),
@@ -223,10 +225,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
             children: [
               Text(
                 'Personal Information',
-                style: GoogleFonts.shadowsIntoLightTwo(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).textTheme.bodyLarge?.color,
+                  fontFamily: 'Roboto',
                 ),
               ),
               SizedBox(height: 16),
@@ -355,10 +358,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
           children: [
             Text(
               'Password & Security',
-              style: GoogleFonts.shadowsIntoLightTwo(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context).textTheme.bodyLarge?.color,
+                fontFamily: 'Roboto',
               ),
             ),
             SizedBox(height: 16),
@@ -403,10 +407,11 @@ class _UserProfilePageState extends State<UserProfilePage> {
           children: [
             Text(
               'Account Actions',
-              style: GoogleFonts.shadowsIntoLightTwo(
+              style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: Theme.of(context).textTheme.bodyLarge?.color,
+                fontFamily: 'Roboto',
               ),
             ),
             SizedBox(height: 16),
@@ -450,9 +455,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
       builder: (context) => AlertDialog(
         title: Text(
           'Change Password',
-          style: GoogleFonts.shadowsIntoLightTwo(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
+            fontFamily: 'Roboto',
           ),
         ),
         content: Form(
@@ -591,9 +597,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
       builder: (context) => AlertDialog(
         title: Text(
           'Reset Password',
-          style: GoogleFonts.shadowsIntoLightTwo(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
+            fontFamily: 'Roboto',
           ),
         ),
         content: Column(
@@ -716,23 +723,18 @@ class _UserProfilePageState extends State<UserProfilePage> {
     });
 
     try {
-      final success = await EmailService.instance.sendPasswordResetEmail(email);
+      // Use Supabase's built-in password reset
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'teacherplanner://reset-password',
+      );
       
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Password reset email sent to $email'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send password reset email'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password reset email sent to $email'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -795,9 +797,10 @@ class _UserProfilePageState extends State<UserProfilePage> {
       builder: (context) => AlertDialog(
         title: Text(
           'Account Statistics',
-          style: GoogleFonts.shadowsIntoLightTwo(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
+            fontFamily: 'Roboto',
           ),
         ),
         content: Column(

@@ -126,10 +126,11 @@ class LessonCardWidget extends StatelessWidget {
             ),
             child: Text(
               'Period ${event.periodIndex + 1}',
-              style: AppFonts.labelMedium.copyWith(
+              style: TextStyle(
                 color: event.color,
                 fontSize: isTablet ? 14 : 12,
                 fontWeight: FontWeight.w600,
+                fontFamily: 'Roboto',
               ),
             ),
           ),
@@ -142,9 +143,10 @@ class LessonCardWidget extends StatelessWidget {
               event.headerText?.isNotEmpty == true 
                   ? event.headerText! 
                   : event.subject,
-              style: AppFonts.lessonTitle.copyWith(
+              style: TextStyle(
                 fontSize: isTablet ? 22 : 18,
                 color: Colors.grey[900],
+                fontFamily: 'Roboto',
               ),
             ),
           ),
@@ -177,17 +179,19 @@ class LessonCardWidget extends StatelessWidget {
           onChanged: (value) {
             // This will be handled by the parent widget
           },
-          style: AppFonts.userInput.copyWith(
+          style: TextStyle(
             fontSize: isTablet ? 16 : 14,
             height: 1.5,
+            fontFamily: 'Roboto',
           ),
           maxLines: 6,
           decoration: InputDecoration(
             labelText: 'Lesson Details',
             hintText: 'Enter detailed lesson description, activities, objectives...',
-            hintStyle: AppFonts.userInput.copyWith(
+            hintStyle: TextStyle(
               color: Colors.grey.shade400,
               fontSize: isTablet ? 14 : 12,
+              fontFamily: 'Roboto',
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -229,17 +233,19 @@ class LessonCardWidget extends StatelessWidget {
           onChanged: (value) {
             // This will be handled by the parent widget
           },
-          style: AppFonts.userInput.copyWith(
+          style: TextStyle(
             fontSize: isTablet ? 16 : 14,
             height: 1.5,
+            fontFamily: 'Roboto',
           ),
           maxLines: 4,
           decoration: InputDecoration(
             labelText: 'Teacher Notes',
             hintText: 'Add your notes, reminders, or additional details...',
-            hintStyle: AppFonts.userInput.copyWith(
+            hintStyle: TextStyle(
               color: Colors.grey.shade400,
               fontSize: isTablet ? 14 : 12,
+              fontFamily: 'Roboto',
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),

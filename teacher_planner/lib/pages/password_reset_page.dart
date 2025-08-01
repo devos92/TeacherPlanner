@@ -113,10 +113,11 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
                   SizedBox(height: 16),
                   Text(
                     'Reset Your Password',
-                    style: GoogleFonts.shadowsIntoLightTwo(
+                    style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Theme.of(context).textTheme.bodyLarge?.color,
+                      fontFamily: 'Roboto',
                     ),
                   ),
                   SizedBox(height: 8),
@@ -308,10 +309,11 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
             SizedBox(height: 16),
             Text(
               'Invalid or Expired Link',
-              style: GoogleFonts.shadowsIntoLightTwo(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).textTheme.bodyLarge?.color,
+                fontFamily: 'Roboto',
               ),
             ),
             SizedBox(height: 8),
@@ -367,10 +369,11 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
             SizedBox(height: 16),
             Text(
               'Password Reset Successful!',
-              style: GoogleFonts.shadowsIntoLightTwo(
+              style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).textTheme.bodyLarge?.color,
+                fontFamily: 'Roboto',
               ),
             ),
             SizedBox(height: 8),
@@ -450,9 +453,10 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
       builder: (context) => AlertDialog(
         title: Text(
           'Request Password Reset',
-          style: GoogleFonts.shadowsIntoLightTwo(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
+            fontFamily: 'Roboto',
           ),
         ),
         content: Column(
@@ -512,24 +516,19 @@ class _PasswordResetPageState extends State<PasswordResetPage> {
     });
 
     try {
-      final success = await EmailService.instance.sendPasswordResetEmail(email);
+      // Use Supabase's built-in password reset
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'teacherplanner://reset-password',
+      );
       
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Password reset email sent to $email'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        Navigator.of(context).pushReplacementNamed('/auth');
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send password reset email'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password reset email sent to $email'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pushReplacementNamed('/auth');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

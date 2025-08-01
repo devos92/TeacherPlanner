@@ -49,17 +49,19 @@ class TeacherNotesSection extends StatelessWidget {
     return TextFormField(
       initialValue: event.notes,
       onChanged: onChanged,
-      style: AppFonts.userInput.copyWith(
-        fontSize: isTablet ? 16 : 14,
-        height: 1.5,
-      ),
+                      style: TextStyle(
+                  fontSize: isTablet ? 16 : 14,
+                  height: 1.5,
+                  fontFamily: 'Roboto',
+                ),
       maxLines: 4,
       decoration: InputDecoration(
         labelText: 'Teacher Notes',
         hintText: 'Add your notes, reminders, or additional details...',
-        hintStyle: AppFonts.userInput.copyWith(
+        hintStyle: TextStyle(
           color: Colors.grey.shade400,
           fontSize: isTablet ? 14 : 12,
+          fontFamily: 'Roboto',
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

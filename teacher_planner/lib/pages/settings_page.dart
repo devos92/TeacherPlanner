@@ -27,10 +27,11 @@ class SettingsPage extends StatelessWidget {
                     children: [
                       Text(
                         'Appearance',
-                        style: GoogleFonts.shadowsIntoLightTwo(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
                           color: Theme.of(context).textTheme.bodyLarge?.color,
+                          fontFamily: 'Roboto',
                         ),
                       ),
                       SizedBox(height: 16),
@@ -139,10 +140,11 @@ class SettingsPage extends StatelessWidget {
                     children: [
                       Text(
                         'General',
-                        style: GoogleFonts.shadowsIntoLightTwo(
+                        style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w600,
                           color: Theme.of(context).textTheme.bodyLarge?.color,
+                          fontFamily: 'Roboto',
                         ),
                       ),
                       SizedBox(height: 16),
@@ -216,10 +218,11 @@ class SettingsPage extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: Text(
           'About Teacher Planner',
-          style: GoogleFonts.shadowsIntoLightTwo(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
             color: Theme.of(context).textTheme.bodyLarge?.color,
+            fontFamily: 'Roboto',
           ),
         ),
         content: Text(

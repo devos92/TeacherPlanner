@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:http/http.dart' as http;
 import 'auth_service.dart';
 
 /// Email service for verification, password reset, and notifications
@@ -338,27 +340,48 @@ class EmailService {
     required String textContent,
   }) async {
     try {
-      // Option 1: Use Supabase Edge Functions (recommended)
-      final response = await _supabase.functions.invoke('send-email', body: {
+      // Get Mailgun configuration from environment
+      final mailgunApiKey = dotenv.env['EMAIL_SERVICE_API_KEY'];
+      final mailgunDomain = dotenv.env['EMAIL_SERVICE_URL'];
+      
+      if (mailgunApiKey == null || mailgunApiKey.isEmpty || 
+          mailgunDomain == null || mailgunDomain.isEmpty) {
+        debugPrint('❌ Mailgun configuration missing. Please check your .env file.');
+        return false;
+      }
+
+      // Mailgun API endpoint
+      final mailgunUrl = 'https://api.mailgun.net/v3/$mailgunDomain/messages';
+      
+      // Prepare form data for Mailgun
+      final formData = {
+        'from': 'TeacherPlanner <noreply@$mailgunDomain>',
         'to': to,
         'subject': subject,
         'html': htmlContent,
         'text': textContent,
-      });
+      };
 
-      if (response.status == 200) {
+      // Make HTTP request to Mailgun
+      final response = await http.post(
+        Uri.parse(mailgunUrl),
+        headers: {
+          'Authorization': 'Basic ${base64Encode(utf8.encode('api:$mailgunApiKey'))}',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData,
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('✅ Email sent successfully via Mailgun to: $to');
         return true;
+      } else {
+        debugPrint('❌ Mailgun API error: ${response.statusCode} - ${response.body}');
+        return false;
       }
 
-      // Option 2: Use external email service (fallback)
-      // You can integrate with services like SendGrid, Mailgun, etc.
-      // For now, we'll simulate success
-      debugPrint('📧 Email would be sent to: $to');
-      debugPrint('Subject: $subject');
-      return true;
-
     } catch (e) {
-      debugPrint('❌ Error sending email: $e');
+      debugPrint('❌ Error sending email via Mailgun: $e');
       return false;
     }
   }

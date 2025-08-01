@@ -49,17 +49,19 @@ class LessonDetailsSection extends StatelessWidget {
     return TextFormField(
       initialValue: event.body,
       onChanged: onChanged,
-      style: AppFonts.userInput.copyWith(
+      style: TextStyle(
         fontSize: isTablet ? 16 : 14,
         height: 1.5,
+        fontFamily: 'Roboto',
       ),
       maxLines: 6,
       decoration: InputDecoration(
         labelText: 'Lesson Details',
         hintText: 'Enter detailed lesson description, activities, objectives...',
-        hintStyle: AppFonts.userInput.copyWith(
+        hintStyle: TextStyle(
           color: Colors.grey.shade400,
           fontSize: isTablet ? 14 : 12,
+          fontFamily: 'Roboto',
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

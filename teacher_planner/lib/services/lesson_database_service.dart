@@ -25,6 +25,7 @@ class LessonDatabaseService {
           .from('weekly_plans')
           .upsert({
             'teacher_id': user.id,
+            'title': 'Weekly Plan - ${weekStartDate.toIso8601String().split('T')[0]}', // Add required title field
             'week_start_date': weekStartDate.toIso8601String().split('T')[0],
             'periods': periods,
             'plan_data': planData.map((data) => {

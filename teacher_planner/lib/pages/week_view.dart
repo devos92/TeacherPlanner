@@ -223,6 +223,11 @@ class _WeekViewState extends State<WeekView> {
       },
       onPreviousWeek: () => _navigateWeek(-1), // Previous week callback
       onNextWeek: () => _navigateWeek(1), // Next week callback
+      onLayoutChanged: (isVertical) {
+        setState(() {
+          _isVerticalLayout = isVertical;
+        });
+      },
     );
   }
 

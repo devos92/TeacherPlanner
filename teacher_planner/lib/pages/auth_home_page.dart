@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import 'home_page.dart';
@@ -167,11 +168,12 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
         // App Title
         Text(
           'Teacher Planner',
-          style: GoogleFonts.shadowsIntoLightTwo(
+          style: TextStyle(
             fontSize: 36,
             fontWeight: FontWeight.bold,
             color: Colors.white,
             letterSpacing: 1.2,
+            fontFamily: 'Roboto',
           ),
         ),
         
@@ -213,10 +215,11 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
             // Title
             Text(
               _isLogin ? 'Welcome Back' : 'Create Account',
-              style: GoogleFonts.shadowsIntoLightTwo(
+              style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
                 color: Colors.grey[800],
+                fontFamily: 'Roboto',
               ),
             ),
             
@@ -474,9 +477,10 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
       builder: (context) => AlertDialog(
         title: Text(
           'Reset Password',
-          style: GoogleFonts.shadowsIntoLightTwo(
+          style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.w600,
+            fontFamily: 'Roboto',
           ),
         ),
         content: Column(
@@ -536,23 +540,18 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
     });
 
     try {
-      final success = await EmailService.instance.sendPasswordResetEmail(email);
+      // Use Supabase's built-in password reset
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'teacherplanner://reset-password',
+      );
       
-      if (success) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Password reset email sent to $email'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send password reset email'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Password reset email sent to $email'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
