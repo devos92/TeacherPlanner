@@ -92,20 +92,27 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-                    body: Stack(
+     @override
+   Widget build(BuildContext context) {
+     return Scaffold(
+       backgroundColor: Colors.transparent,
+       body: Stack(
          children: [
-                       // Background Image (responsive)
+                       // Background Image (full screen)
             Positioned.fill(
               child: SvgPicture.asset(
                 'assets/images/login_background.svg',
                 fit: BoxFit.cover,
+                placeholderBuilder: (context) => Container(
+                  color: Colors.blue[100],
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
               ),
             ),
-                                               // Content
-             SafeArea(
+           // Content
+           SafeArea(
               child: FadeTransition(
                 opacity: _fadeAnimation,
                 child: SlideTransition(
