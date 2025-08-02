@@ -10,6 +10,8 @@ import 'long_term_planning_page.dart';
 import 'settings_page.dart';
 import 'user_profile_page.dart'; // Added import for UserProfilePage
 import 'database_test_page.dart'; // Added import for DatabaseTestPage
+import '../services/planner_service.dart'; // Added import for PlannerService
+import '../services/auth_service.dart'; // Added import for AuthService
 
 class HomePage extends StatefulWidget {
   @override
@@ -26,6 +28,11 @@ class _HomePageState extends State<HomePage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width > 768;
     
@@ -34,6 +41,12 @@ class _HomePageState extends State<HomePage> {
         title: Text(_getPageTitle()),
         backgroundColor: Theme.of(context).appBarTheme.backgroundColor,
         actions: [
+          // Planner Setup/Management
+          IconButton(
+            icon: Icon(Icons.add_task),
+            onPressed: _showPlannerOptions,
+            tooltip: 'Planner Options',
+          ),
           IconButton(
             icon: Icon(Icons.storage),
             onPressed: () {
@@ -409,5 +422,162 @@ class _HomePageState extends State<HomePage> {
         transitionDuration: Duration(milliseconds: 300),
       ),
     );
+  }
+
+  Future<void> _showPlannerOptions() async {
+    final currentUser = await AuthService.instance.getCurrentUser();
+    if (currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Please log in to access planner options'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    final hasPlanner = await PlannerService.instance.hasExistingPlanner(currentUser.id);
+    final plannerStats = await PlannerService.instance.getPlannerStats(currentUser.id);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Container(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.assignment, color: Theme.of(context).primaryColor),
+                SizedBox(width: 8),
+                Text(
+                  'Planner Options',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Roboto',
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 20),
+            
+            if (hasPlanner) ...[
+              // Show planner stats
+              Container(
+                padding: EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Your Planner Stats',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Roboto',
+                      ),
+                    ),
+                    SizedBox(height: 8),
+                                         Text('Weekly Plans: ${plannerStats['weekly_plans_count']}'),
+                     Text('Lessons: ${plannerStats['lessons_count']}'),
+                  ],
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
+            
+            // Create new planner option
+            ListTile(
+              leading: Icon(Icons.add_circle_outline, color: Colors.green),
+              title: Text('Create New Planner'),
+              subtitle: Text('Set up a fresh planner with new settings'),
+              onTap: () {
+                Navigator.pop(context);
+                _showPlannerSetupDialog();
+              },
+            ),
+            
+            // Load existing planner option
+            if (hasPlanner) ...[
+              ListTile(
+                leading: Icon(Icons.folder_open, color: Colors.blue),
+                title: Text('Load Existing Planner'),
+                subtitle: Text('Continue with your current planner'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Loading your existing planner...'),
+                      backgroundColor: Colors.blue,
+                    ),
+                  );
+                },
+              ),
+            ],
+            
+            // Reset planner option
+            if (hasPlanner) ...[
+              ListTile(
+                leading: Icon(Icons.refresh, color: Colors.orange),
+                title: Text('Reset Planner'),
+                subtitle: Text('Clear all data and start fresh'),
+                onTap: () => _showResetConfirmation(),
+              ),
+            ],
+            
+            SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showResetConfirmation() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Reset Planner'),
+        content: Text(
+          'This will delete all your planner data including weekly plans and events. '
+          'This action cannot be undone. Are you sure?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: Text('Reset'),
+          ),
+        ],
+      ),
+    );
+
+    if (result == true) {
+      final currentUser = await AuthService.instance.getCurrentUser();
+      if (currentUser != null) {
+        final success = await PlannerService.instance.deletePlannerData(currentUser.id);
+        if (success) {
+          Navigator.pop(context); // Close bottom sheet
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ Planner reset successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    }
   }
 } 

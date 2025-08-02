@@ -132,8 +132,30 @@ class AutoSaveService {
         return false;
       }
 
-      // Add user ID to data
-      final dataWithUserId = {...data, 'user_id': userId};
+      // Add user ID to data - use correct column names
+      final dataWithUserId = {...data};
+      if (tableName == 'weekly_plans') {
+        dataWithUserId['user_id'] = userId;
+      } else if (tableName == 'lessons') {
+        dataWithUserId['teacher_id'] = userId;
+      } else {
+        dataWithUserId['user_id'] = userId;
+      }
+
+      // Handle special cases for specific tables
+      if (tableName == 'weekly_plans') {
+        // Add default title for weekly plans if missing
+        if (dataWithUserId['title'] == null) {
+          final weekStartDate = dataWithUserId['week_start_date'] ?? 
+                               DateTime.now().toIso8601String().split('T')[0];
+          dataWithUserId['title'] = 'Weekly Plan - $weekStartDate';
+        }
+        
+        // Ensure week_start_date is present
+        if (dataWithUserId['week_start_date'] == null) {
+          dataWithUserId['week_start_date'] = DateTime.now().toIso8601String().split('T')[0];
+        }
+      }
 
       // Use Supabase instance directly
       final supabase = Supabase.instance.client;

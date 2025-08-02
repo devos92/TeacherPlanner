@@ -1,3 +1,5 @@
+// lib/widgets/weekly_plan_widget.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -411,7 +413,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
         ),
       ),
           
-          // Enhanced view toggle with Material You design
+          
           Container(
             margin: EdgeInsets.symmetric(
               horizontal: isTablet ? 24 : 16,
@@ -448,14 +450,14 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                         children: [
                           Icon(
                             Icons.view_agenda,
-                            color: !_isHorizontalView ? Colors.white : Colors.grey[600],
+                            color: widget.isVerticalLayout ? Colors.white : Colors.grey[600],
                             size: isTablet ? 22 : 18,
                           ),
                           SizedBox(width: 8),
                           Text(
                             'Vertical',
                             style: TextStyle(
-                              color: !_isHorizontalView ? Colors.white : Colors.grey[600],
+                              color: widget.isVerticalLayout ? Colors.white : Colors.grey[600],
                               fontWeight: FontWeight.w600,
                               fontSize: isTablet ? 16 : 14,
                             ),
@@ -483,14 +485,14 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                         children: [
                           Icon(
                             Icons.view_day,
-                            color: _isHorizontalView ? Colors.white : Colors.grey[600],
+                            color: !widget.isVerticalLayout ? Colors.white : Colors.grey[600],
                             size: isTablet ? 22 : 18,
                           ),
                           SizedBox(width: 8),
                           Text(
                             'Horizontal',
                             style: TextStyle(
-                              color: _isHorizontalView ? Colors.white : Colors.grey[600],
+                              color: !widget.isVerticalLayout ? Colors.white : Colors.grey[600],
                               fontWeight: FontWeight.w600,
                               fontSize: isTablet ? 16 : 14,
                             ),
