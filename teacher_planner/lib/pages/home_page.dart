@@ -502,7 +502,12 @@ class _HomePageState extends State<HomePage> {
               subtitle: Text('Set up a fresh planner with new settings'),
               onTap: () {
                 Navigator.pop(context);
-                _showPlannerSetupDialog();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Create new planner functionality coming soon...'),
+                    backgroundColor: Colors.blue,
+                  ),
+                );
               },
             ),
             

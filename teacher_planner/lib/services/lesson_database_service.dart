@@ -45,10 +45,7 @@ class LessonDatabaseService {
                 'a': data.lessonColor!.alpha,
               } : null,
             }).toList(),
-            'metadata': {
-              'last_saved': DateTime.now().toIso8601String(),
-              'lesson_count': planData.where((d) => d.isLesson).length,
-            }
+            
           });
 
       // Save individual lessons to lessons table
@@ -79,10 +76,7 @@ class LessonDatabaseService {
             'b': lesson.lessonColor!.blue,
             'a': lesson.lessonColor!.alpha,
           } : null,
-          'metadata': {
-            'week_start_date': weekStartDate.toIso8601String().split('T')[0],
-            'auto_saved': true,
-          },
+        
         };
 
         // Check if lesson already exists
