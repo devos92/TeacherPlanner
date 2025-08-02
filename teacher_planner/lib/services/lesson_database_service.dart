@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/weekly_plan_data.dart';
-import '../models/event_block.dart';
+
 import '../models/curriculum_models.dart';
 
 class LessonDatabaseService {

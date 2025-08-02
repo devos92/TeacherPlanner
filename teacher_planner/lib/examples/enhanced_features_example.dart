@@ -214,7 +214,7 @@ final outcomes = curriculumService.getSelectedOutcomes(['acela1426', 'acela1427'
   void _showEnhancedDayDetail(BuildContext context) {
     // Create sample events for demonstration
     final sampleEvents = [
-      EventBlock(
+      EnhancedEventBlock(
         day: 'Mon',
         subject: 'Mathematics - Number Patterns',
         subtitle: 'Foundation Year',
@@ -225,7 +225,7 @@ final outcomes = curriculumService.getSelectedOutcomes(['acela1426', 'acela1427'
         finishHour: 10,
         finishMinute: 30,
       ),
-      EventBlock(
+      EnhancedEventBlock(
         day: 'Mon',
         subject: 'English - Reading Comprehension',
         subtitle: 'Year 1',
@@ -236,7 +236,7 @@ final outcomes = curriculumService.getSelectedOutcomes(['acela1426', 'acela1427'
         finishHour: 12,
         finishMinute: 0,
       ),
-      EventBlock(
+      EnhancedEventBlock(
         day: 'Mon',
         subject: 'Science - Living Things',
         subtitle: 'Foundation Year',

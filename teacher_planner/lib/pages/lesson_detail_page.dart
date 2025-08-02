@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/weekly_plan_data.dart';
+import '../models/curriculum_models.dart';
 
 
 class LessonDetailPage extends StatelessWidget {
-  final EventBlock event;
+  final EnhancedEventBlock event;
 
   const LessonDetailPage({Key? key, required this.event}) : super(key: key);
 

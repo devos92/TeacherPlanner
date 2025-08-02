@@ -357,7 +357,7 @@ class EnhancedEventBlock {
     };
   }
 
-  factory EnhancedEventBlock.fromJson(Map<String, dynamic> json) {
+    factory EnhancedEventBlock.fromJson(Map<String, dynamic> json) {
     return EnhancedEventBlock(
       id: json['id'] as String,
       day: json['day'] as String,

@@ -2,8 +2,9 @@
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/event_block.dart';
+
 import '../models/weekly_plan_data.dart';
+import '../models/curriculum_models.dart';
 import '../services/day_detail_service.dart';
 import '../widgets/curriculum_sidebar.dart';
 import '../widgets/day_header_widget.dart';
@@ -16,7 +17,7 @@ import 'package:path/path.dart' as path;
 
 class EnhancedDayDetailPage extends StatefulWidget {
   final String day;
-  final List<EventBlock> events;
+  final List<EnhancedEventBlock> events;
   final List<WeeklyPlanData>? weeklyPlanData;
   final int dayIndex;
   final Function(List<WeeklyPlanData>)? onPlanDataChanged;

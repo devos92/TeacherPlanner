@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/weekly_plan_data.dart';
 import '../widgets/period_selection_dialog.dart';
 import '../widgets/weekly_plan_widget.dart';
-import '../models/event_block.dart';
+
 import '../services/lesson_database_service.dart';
 import '../services/auto_save_service.dart';
 import '../services/auth_service.dart';
