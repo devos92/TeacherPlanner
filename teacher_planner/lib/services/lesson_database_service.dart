@@ -65,7 +65,7 @@ class LessonDatabaseService {
               'is_vertical_layout': true,
               'plan_data': planJson,
             },
-            onConflict: ['user_id', 'week_start_date'],
+            onConflict: 'user_id,week_start_date',
           );
 
       // Save individual lessons
