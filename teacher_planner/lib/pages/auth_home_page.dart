@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import 'home_page.dart';
 import '../services/email_service.dart';
+import '../widgets/app_images.dart';
 import 'database_test_page.dart'; // Added import for database test
 
 class AuthHomePage extends StatefulWidget {
@@ -93,18 +94,9 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.blue[600]!,
-              Colors.blue[800]!,
-              Colors.indigo[900]!,
-            ],
-          ),
-        ),
+      body: AppImages.backgroundImage(
+        imagePath: 'assets/images/login_background.svg', // Your login background SVG
+        overlayColor: Colors.transparent, // No overlay - just the clean image
         child: SafeArea(
           child: FadeTransition(
             opacity: _fadeAnimation,
@@ -141,51 +133,69 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
   Widget _buildAppHeader() {
     return Column(
       children: [
-        // App Icon
+        // App Icon with enhanced styling
         Container(
-          width: 120,
-          height: 120,
+          width: 140,
+          height: 140,
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
-            borderRadius: BorderRadius.circular(30),
+            color: Colors.white.withOpacity(0.25),
+            borderRadius: BorderRadius.circular(35),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 20,
-                offset: Offset(0, 10),
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 25,
+                offset: Offset(0, 12),
               ),
             ],
+            border: Border.all(
+              color: Colors.white.withOpacity(0.4),
+              width: 2,
+            ),
           ),
           child: Icon(
             Icons.school,
-            size: 60,
+            size: 70,
             color: Colors.white,
           ),
         ),
         
-        SizedBox(height: 24),
+        SizedBox(height: 32),
         
-        // App Title
+        // App Title with enhanced styling
         Text(
           'Teacher Planner',
           style: TextStyle(
-            fontSize: 36,
+            fontSize: 42,
             fontWeight: FontWeight.bold,
             color: Colors.white,
-            letterSpacing: 1.2,
+            letterSpacing: 1.5,
             fontFamily: 'Roboto',
+            shadows: [
+              Shadow(
+                color: Colors.black.withOpacity(0.3),
+                offset: Offset(0, 2),
+                blurRadius: 4,
+              ),
+            ],
           ),
         ),
         
-        SizedBox(height: 8),
+        SizedBox(height: 12),
         
-        // Subtitle
+        // Subtitle with enhanced styling
         Text(
           'Organize your teaching journey',
           style: TextStyle(
-            fontSize: 16,
-            color: Colors.white.withOpacity(0.9),
-            fontWeight: FontWeight.w300,
+            fontSize: 18,
+            color: Colors.white.withOpacity(0.95),
+            fontWeight: FontWeight.w400,
+            shadows: [
+              Shadow(
+                color: Colors.black.withOpacity(0.2),
+                offset: Offset(0, 1),
+                blurRadius: 2,
+              ),
+            ],
           ),
         ),
       ],
@@ -201,11 +211,15 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 30,
             offset: Offset(0, 15),
           ),
         ],
+        border: Border.all(
+          color: Colors.white,
+          width: 2,
+        ),
       ),
       child: Form(
         key: _formKey,
@@ -335,10 +349,21 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
       keyboardType: TextInputType.emailAddress,
       decoration: InputDecoration(
         labelText: 'Email',
-        prefixIcon: Icon(Icons.email_outlined),
+        prefixIcon: Icon(Icons.email_outlined, color: Colors.blue[600]),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey[300]!),
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -358,10 +383,21 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
       obscureText: true,
       decoration: InputDecoration(
         labelText: 'Password',
-        prefixIcon: Icon(Icons.lock_outline),
+        prefixIcon: Icon(Icons.lock_outline, color: Colors.blue[600]),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey[300]!),
         ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: Colors.blue[600]!, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
@@ -421,16 +457,17 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: 60,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleSubmit,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.blue[600],
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(20),
           ),
-          elevation: 4,
+          elevation: 8,
+          shadowColor: Colors.blue.withOpacity(0.3),
         ),
         child: _isLoading
           ? SizedBox(

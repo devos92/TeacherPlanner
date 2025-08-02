@@ -1,6 +1,7 @@
 // lib/widgets/app_images.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class AppImages {
   // Banner Images
@@ -46,7 +47,7 @@ class AppImages {
     );
   }
 
-  // Background Image with Overlay
+  // Background Image with Overlay (supports PNG, JPG, and SVG)
   static Widget backgroundImage({
     required String imagePath,
     required Widget child,
@@ -55,15 +56,21 @@ class AppImages {
   }) {
     return Stack(
       children: [
-        // Background Image
+        // Background Image (supports SVG and regular images)
         Positioned.fill(
-          child: Image.asset(
-            imagePath,
-            fit: fit,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(color: Colors.grey[300]);
-            },
-          ),
+          child: imagePath.toLowerCase().endsWith('.svg')
+            ? SvgPicture.asset(
+                imagePath,
+                fit: fit,
+                placeholderBuilder: (context) => Container(color: Colors.grey[300]),
+              )
+            : Image.asset(
+                imagePath,
+                fit: fit,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(color: Colors.grey[300]);
+                },
+              ),
         ),
         // Overlay
         Positioned.fill(

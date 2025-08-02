@@ -10,6 +10,7 @@ import 'long_term_planning_page.dart';
 import 'settings_page.dart';
 import 'user_profile_page.dart'; // Added import for UserProfilePage
 import 'database_test_page.dart'; // Added import for DatabaseTestPage
+import 'image_test_page.dart'; // Added import for ImageTestPage
 import '../services/planner_service.dart'; // Added import for PlannerService
 import '../services/auth_service.dart'; // Added import for AuthService
 
@@ -95,6 +96,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             icon: Icon(Icons.add_task),
             onPressed: _showPlannerOptions,
             tooltip: 'Planner Options',
+          ),
+          IconButton(
+            icon: Icon(Icons.image),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => ImageTestPage()),
+              );
+            },
+            tooltip: 'Image Test',
           ),
           IconButton(
             icon: Icon(Icons.storage),
