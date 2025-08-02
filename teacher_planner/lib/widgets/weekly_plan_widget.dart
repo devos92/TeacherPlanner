@@ -4,10 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../models/weekly_plan_data.dart';
+import '../models/curriculum_models.dart';
 import '../widgets/lesson_dialogs.dart';
 import '../widgets/lesson_cell_widgets.dart';
 import '../config/app_fonts.dart';
 import '../services/lesson_database_service.dart';
+import '../services/week_cache_service.dart';
+import '../services/auth_service.dart';
+import 'loading_shimmer.dart';
 
 class WeeklyPlanWidget extends StatefulWidget {
   final int periods;
@@ -43,8 +47,25 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
   List<WeeklyPlanData> _planData = [];
   DateTime _currentWeek = DateTime.now();
   int _nextLessonId = 1;
+  bool _isLoadingData = false;
 
   List<WeeklyPlanData> get planData => _planData;
+  
+  /// Get plan data as EnhancedEventBlocks
+  List<EnhancedEventBlock> get enhancedPlanData => _planData.map((data) => 
+    LessonDatabaseService.weeklyPlanDataToEnhancedEvent(data, _currentWeek)
+  ).toList();
+  
+  /// Set plan data from EnhancedEventBlocks
+  void setEnhancedPlanData(List<EnhancedEventBlock> events) {
+    setState(() {
+      _planData = events.map((event) {
+        final dayIndex = LessonDatabaseService.getDayIndexFromName(event.day);
+        return LessonDatabaseService.enhancedEventToWeeklyPlanData(event, dayIndex);
+      }).toList();
+    });
+    widget.onPlanChanged(_planData);
+  }
 
   // Day colors for visual distinction
   static const List<Color> _dayColors = [
@@ -75,24 +96,25 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
   void initState() {
     super.initState();
     _initializeEmptyCells();
-    _loadWeekData();
+    loadWeekData();
   }
 
   @override
   void didUpdateWidget(WeeklyPlanWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Rebuild when weekStartDate changes
+    // Reload data when weekStartDate changes
     if (oldWidget.weekStartDate != widget.weekStartDate) {
-      setState(() {
-        // Update all plan data with new dates
-        if (widget.weekStartDate != null) {
-          for (int i = 0; i < _planData.length; i++) {
-            final data = _planData[i];
-            _planData[i] = data.copyWith(
-              date: widget.weekStartDate!.add(Duration(days: data.dayIndex)),
-            );
-          }
-        }
+      debugPrint('📅 WEEK CHANGED!');
+      debugPrint('   Old week: ${oldWidget.weekStartDate}');
+      debugPrint('   New week: ${widget.weekStartDate}');
+      
+      // Clear current data and load new week immediately
+      _planData.clear();
+      _initializeEmptyCells();
+      
+      // Load new week data with a small delay to ensure UI updates
+      Future.microtask(() {
+        loadWeekData();
       });
     }
   }
@@ -123,48 +145,60 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
     }
   }
 
-  void _loadWeekData() async {
+    void loadWeekData() async {
+    // Prevent multiple simultaneous loads
+    if (_isLoadingData) {
+      debugPrint('⏳ Already loading, skipping...');
+      return;
+    }
+    
+    setState(() {
+      _isLoadingData = true;
+    });
+    
     try {
-      debugPrint('Loading week data for week starting: ${widget.weekStartDate}');
+      debugPrint('📥 Loading week data: ${widget.weekStartDate}');
       
       if (widget.weekStartDate != null) {
-        final loadedData = await LessonDatabaseService.loadCompleteWeeklyPlan(widget.weekStartDate!);
+        // Direct database load (bypass cache to prevent issues)
+        final loadedData = await LessonDatabaseService.loadCompleteWeeklyPlan(
+          widget.weekStartDate!
+        );
         
-        if (loadedData.isNotEmpty) {
-          setState(() {
+        setState(() {
+          if (loadedData.isNotEmpty) {
             _planData = loadedData;
-          });
-          debugPrint('Successfully loaded ${loadedData.length} plan items');
-        } else {
-          // Initialize with empty data if no data found
-          if (widget.initialData != null) {
-            _planData = List.from(widget.initialData!);
+            debugPrint('✅ Loaded ${loadedData.length} items');
           } else {
             _initializeEmptyCells();
+            debugPrint('📝 No data found, initialized empty cells');
           }
-        }
+          _isLoadingData = false;
+        });
       } else {
-        // Initialize with initialData if provided
-        if (widget.initialData != null) {
-          _planData = List.from(widget.initialData!);
-        } else {
+        setState(() {
           _initializeEmptyCells();
-        }
+          _isLoadingData = false;
+        });
+        debugPrint('⚠️ No weekStartDate provided');
       }
     } catch (e) {
-      debugPrint('Error loading week data: $e');
-      // Fallback to initialData or empty cells
-      if (widget.initialData != null) {
-        _planData = List.from(widget.initialData!);
-      } else {
+      debugPrint('❌ Error loading week data: $e');
+      setState(() {
         _initializeEmptyCells();
-      }
+        _isLoadingData = false;
+      });
     }
   }
 
-  void _saveWeekData() async {
+  void saveWeekData() async {
     try {
-      debugPrint('Saving week data for week starting: ${widget.weekStartDate}');
+      if (widget.weekStartDate == null) {
+        debugPrint('⚠️ Cannot save: weekStartDate is null');
+        return;
+      }
+      
+      debugPrint('💾 Saving week data for: ${widget.weekStartDate}');
       debugPrint('Total lessons: ${_planData.where((d) => d.isLesson).length}');
       
       if (widget.weekStartDate != null) {
@@ -175,13 +209,22 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
         );
         
         if (success) {
-          debugPrint('Successfully saved weekly plan data');
+          // Update cache with fresh data after successful save
+          final user = await AuthService.instance.getCurrentUser();
+          if (user != null) {
+            WeekCacheService.instance.updateCache(
+              widget.weekStartDate!,
+              user.id,
+              _planData,
+            );
+          }
+          debugPrint('✅ Successfully saved and cached weekly plan data');
         } else {
-          debugPrint('Failed to save weekly plan data');
+          debugPrint('❌ Failed to save weekly plan data');
         }
       }
     } catch (e) {
-      debugPrint('Error saving week data: $e');
+      debugPrint('❌ Error saving week data: $e');
     }
   }
 
@@ -215,7 +258,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
         }
         _nextLessonId++;
       });
-      _saveWeekData();
+      saveWeekData();
     }
   }
 
@@ -232,7 +275,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
         _planData.remove(data);
         _planData.add(updatedLesson);
       });
-      _saveWeekData();
+      saveWeekData();
     }
   }
 
@@ -292,7 +335,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
         }
       }
     });
-    _saveWeekData();
+    saveWeekData();
   }
 
   Widget _buildCellContent(WeeklyPlanData data, ThemeData theme, int dayIndex) {
@@ -333,6 +376,56 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
   Widget build(BuildContext context) {
     final isTablet = MediaQuery.of(context).size.width > 768;
     final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+    
+    // Show loading skeleton while data is loading
+    if (_isLoadingData) {
+      return Scaffold(
+        body: Column(
+          children: [
+            // Loading header
+            Container(
+              height: 80,
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 200,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  Spacer(),
+                  Container(
+                    width: 80,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[300],
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Loading skeleton
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(8),
+                child: WeeklyPlanSkeleton(
+                  periods: widget.periods,
+                  isVerticalLayout: widget.isVerticalLayout,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     
     return Scaffold(
       body: Column(
@@ -602,15 +695,15 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                       bottomLeft: Radius.circular(16),
                     ),
                   ),
-                                     child: Text(
-                     'Period',
+                  child: Text(
+                    'Period',
                      style: TextStyle(
-                       fontWeight: FontWeight.bold,
-                       fontSize: fontSize,
-                       color: theme.primaryColor.withOpacity(0.8),
+                      fontWeight: FontWeight.bold,
+                      fontSize: fontSize,
+                      color: theme.primaryColor.withOpacity(0.8),
                        fontFamily: 'Roboto',
-                     ),
-                   ),
+                    ),
+                  ),
                 ),
                 ...List.generate(5, (dayIndex) => Expanded(
             child: _buildDayHeader(dayIndex, headerHeight, fontSize, smallFontSize, theme),
@@ -745,15 +838,15 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                       bottomLeft: Radius.circular(16),
                     ),
                   ),
-                                     child: Text(
-                     'Day',
+                  child: Text(
+                    'Day',
                      style: TextStyle(
-                       fontWeight: FontWeight.bold,
-                       fontSize: fontSize,
-                       color: theme.primaryColor.withOpacity(0.8),
+                      fontWeight: FontWeight.bold,
+                      fontSize: fontSize,
+                      color: theme.primaryColor.withOpacity(0.8),
                        fontFamily: 'Roboto',
-                     ),
-                   ),
+                    ),
+                  ),
                 ),
                 ...List.generate(widget.periods * 2 - 1, (index) {
             final isGap = index % 2 == 1;
@@ -796,15 +889,15 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                     // Removed boxShadow here
                         ),
                         child: Center(
-                                                   child: Text(
-                           'P${periodIndex + 1}',
+                          child: Text(
+                            'P${periodIndex + 1}',
                            style: TextStyle(
-                             fontWeight: FontWeight.bold,
-                             color: theme.primaryColor.withOpacity(0.8),
-                             fontSize: fontSize - 2,
+                              fontWeight: FontWeight.bold,
+                              color: theme.primaryColor.withOpacity(0.8),
+                        fontSize: fontSize - 2,
                              fontFamily: 'Roboto',
-                           ),
-                         ),
+                            ),
+                          ),
                         ),
                       ),
                     );
@@ -847,15 +940,15 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                 width: 1,
               ),
             ),
-                         child: Text(
-               '${periodIndex + 1}',
+            child: Text(
+              '${periodIndex + 1}',
                style: TextStyle(
-                 color: theme.primaryColor.withOpacity(0.8),
-                 fontSize: smallFontSize + 8,
+                color: theme.primaryColor.withOpacity(0.8),
+                fontSize: smallFontSize + 8,
                  fontWeight: FontWeight.w600,
                  fontFamily: 'Roboto',
-               ),
-             ),
+              ),
+            ),
           ),
           
           // Day cells with color strips and drag/drop functionality
@@ -1100,7 +1193,7 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
         _nextLessonId++;
       });
       
-      _saveWeekData();
+      saveWeekData();
     } catch (e) {
       debugPrint('Error moving lesson: $e');
     }
@@ -1114,46 +1207,46 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
     
     if (fullWeekEvents.isEmpty) {
       // No full week event for this period, show empty gap
-      return Container(
-        height: 40,
-        margin: EdgeInsets.only(bottom: 6),
-        child: Row(
-          children: [
-            Container(
-              width: periodLabelWidth,
-              height: 40,
-            ),
-            ...List.generate(5, (dayIndex) {
-              return Expanded(
-                child: Container(
-                  height: 40,
-                  margin: EdgeInsets.only(left: 3, right: 3),
-                  child: DragTarget<WeeklyPlanData>(
-                    onWillAcceptWithDetails: (details) {
-                      final draggedData = details.data;
-                      return draggedData.isFullWeekEvent;
-                    },
-                    onAcceptWithDetails: (details) {
-                      // Handle full week event drop
-                    },
-                    builder: (context, candidateData, rejectedData) {
-                      return Container(
-                        decoration: BoxDecoration(
-                          color: Colors.transparent,
-                          borderRadius: BorderRadius.circular(6),
-                          border: candidateData.isNotEmpty 
-                            ? Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1)
-                            : null,
-                        ),
-                      );
-                    },
-                  ),
+    return Container(
+      height: 40,
+      margin: EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          Container(
+            width: periodLabelWidth,
+            height: 40,
+          ),
+          ...List.generate(5, (dayIndex) {
+            return Expanded(
+              child: Container(
+                height: 40,
+                margin: EdgeInsets.only(left: 3, right: 3),
+                child: DragTarget<WeeklyPlanData>(
+                  onWillAcceptWithDetails: (details) {
+                    final draggedData = details.data;
+                    return draggedData.isFullWeekEvent;
+                  },
+                  onAcceptWithDetails: (details) {
+                    // Handle full week event drop
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(6),
+                        border: candidateData.isNotEmpty 
+                          ? Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1)
+                          : null,
+                      ),
+                    );
+                  },
                 ),
-              );
-            }),
-          ],
-        ),
-      );
+              ),
+            );
+          }),
+        ],
+      ),
+    );
     } else {
       // Show the full week event
       final event = fullWeekEvents.first;
@@ -1204,13 +1297,13 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
                        textAlign: TextAlign.center,
                        overflow: TextOverflow.ellipsis,
                      ),
-                  ),
                 ),
-              );
-            }),
-          ],
-        ),
-      );
+              ),
+            );
+          }),
+        ],
+      ),
+    );
     }
   }
 
@@ -1347,9 +1440,9 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
       );
       
       // Add the event to all 5 weekdays
-      for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
-        _planData.add(WeeklyPlanData(
-          dayIndex: dayIndex,
+                    for (int dayIndex = 0; dayIndex < 5; dayIndex++) {
+                      _planData.add(WeeklyPlanData(
+                        dayIndex: dayIndex,
           periodIndex: periodIndex,
           content: eventName,
           subject: eventName,
@@ -1357,27 +1450,27 @@ class WeeklyPlanWidgetState extends State<WeeklyPlanWidget> {
           lessonId: 'fullweek_${eventName.toLowerCase()}_${periodIndex}_$dayIndex',
           date: widget.weekStartDate?.add(Duration(days: dayIndex)) ?? DateTime.now(),
           isLesson: false,
-          isFullWeekEvent: true,
+                        isFullWeekEvent: true,
           subLessons: [],
           lessonColor: Colors.orange, // Orange color for full week events
-        ));
-      }
+                      ));
+                    }
       
       // Notify parent of changes
       widget.onPlanChanged(_planData);
-    });
-    
+                  });
+                  
     // Save the data
-    _saveWeekData();
-    
+                  saveWeekData();
+                  
     // Show success message
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('$eventName added to all days in Period ${periodIndex + 1}'),
         backgroundColor: Colors.green,
-      ),
-    );
-  }
+                    ),
+                  );
+                }
 
   void _previousWeek() {
     if (widget.onPreviousWeek != null) {

@@ -152,17 +152,34 @@ class _WeekViewState extends State<WeekView> {
   }
 
   void _navigateWeek(int weeks) {
+    final oldDate = _weekStartDate;
+    
+    // Update to new week immediately (no save for now to prevent issues)
     setState(() {
       _weekStartDate = _weekStartDate.add(Duration(days: weeks * 7));
     });
-    _autoSaveWeeklyPlan();
+    
+    debugPrint('🚀 WEEK NAVIGATION:');
+    debugPrint('   From: $oldDate');
+    debugPrint('   To: $_weekStartDate');
+    debugPrint('   Direction: ${weeks > 0 ? "Next" : "Previous"} week');
+    
+    // Data will auto-load via didUpdateWidget in WeeklyPlanWidget
   }
 
   void _goToToday() {
+    final oldDate = _weekStartDate;
+    
+    // Update to current week immediately (no save for now to prevent issues)
     setState(() {
       _calculateWeekStart();
     });
-    _autoSaveWeeklyPlan();
+    
+    debugPrint('🚀 Navigate to current week:');
+    debugPrint('   From: $oldDate');
+    debugPrint('   To: $_weekStartDate');
+    
+    // Data will auto-load via didUpdateWidget in WeeklyPlanWidget
   }
 
   Future<void> _autoSaveWeeklyPlan() async {

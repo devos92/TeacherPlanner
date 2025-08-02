@@ -640,7 +640,32 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
       }
 
       if (result.success) {
-        _navigateToMainApp();
+        // Add a small delay to ensure session is fully established
+        await Future.delayed(Duration(milliseconds: 500));
+        
+        // Verify authentication before navigating
+        final isAuth = await AuthService.instance.isAuthenticated();
+        final currentUser = Supabase.instance.client.auth.currentUser;
+        final currentSession = Supabase.instance.client.auth.currentSession;
+        
+        debugPrint('🔍 Auth check after success:');
+        debugPrint('  - Custom auth service: $isAuth');
+        debugPrint('  - Supabase currentUser: ${currentUser?.email ?? "NULL"}');
+        debugPrint('  - User ID: ${currentUser?.id ?? "NULL"}');
+        debugPrint('  - Session exists: ${currentSession != null}');
+        debugPrint('  - Session access token: ${currentSession?.accessToken != null ? "EXISTS" : "NULL"}');
+        debugPrint('  - User confirmed: ${currentUser?.emailConfirmedAt != null}');
+        
+        if (currentUser != null) {
+          _navigateToMainApp();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Authentication session not established. Please try again.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

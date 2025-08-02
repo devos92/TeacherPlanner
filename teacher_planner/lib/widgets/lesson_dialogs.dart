@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/weekly_plan_data.dart';
+import '../models/curriculum_models.dart';
 
 class LessonDialogs {
   

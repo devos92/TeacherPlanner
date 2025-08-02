@@ -13,12 +13,23 @@ import 'pages/auth_home_page.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Load environment variables
-  await dotenv.load(fileName: ".env");
+  // Load environment variables (gracefully handle missing .env file)
+  try {
+    await dotenv.load(fileName: ".env");
+    print('✅ Environment variables loaded from .env file');
+  } catch (e) {
+    print('⚠️ No .env file found, using hardcoded configuration');
+    // This is fine - we'll fall back to hardcoded values in SupabaseConfig
+  }
+  
+  // Debug Supabase configuration
+  print('🔧 Supabase Configuration:');
+  print('  URL: ${AppConfig.supabaseUrl}');
+  print('  Anon Key: ${AppConfig.supabaseAnonKey.isEmpty ? "MISSING" : "PROVIDED (${AppConfig.supabaseAnonKey.length} chars)"}');
   
   // Validate Supabase configuration
   if (!AppConfig.isSupabaseConfigured) {
-    print('Error: ${AppConfig.missingSupabaseConfigMessage}');
+    print('❌ Error: ${AppConfig.missingSupabaseConfigMessage}');
     // You might want to show an error dialog or handle this gracefully
   }
   
@@ -27,6 +38,8 @@ void main() async {
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,
   );
+  
+  print('✅ Supabase initialized successfully');
   
   // Initialize AuthService
   await AuthService.instance.initialize();

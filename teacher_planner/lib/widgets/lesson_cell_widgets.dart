@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import '../models/weekly_plan_data.dart';
+import '../models/curriculum_models.dart';
 
 
 class LessonCellWidgets {

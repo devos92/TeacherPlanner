@@ -1,12 +1,17 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'supabase_config.dart';
 
 class AppConfig {
   static String get supabaseUrl {
-    return dotenv.env['SUPABASE_URL'] ?? '';
+    return dotenv.env['SUPABASE_URL']?.isNotEmpty == true 
+        ? dotenv.env['SUPABASE_URL']! 
+        : SupabaseConfig.supabaseUrl;
   }
 
   static String get supabaseAnonKey {
-    return dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+    return dotenv.env['SUPABASE_ANON_KEY']?.isNotEmpty == true 
+        ? dotenv.env['SUPABASE_ANON_KEY']! 
+        : SupabaseConfig.supabaseAnonKey;
   }
 
   static String get supabaseServiceRoleKey {

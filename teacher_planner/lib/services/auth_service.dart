@@ -99,15 +99,24 @@ class AuthService {
         return AuthResult.error('Registration failed. Please try again.', errorType: 'registration-failed');
       }
 
-      // Manually confirm the user for development (bypass email confirmation)
-      if (authResponse.user!.emailConfirmedAt == null) {
-        debugPrint('⚠️ Auto-confirming user for development');
-        // For development, we'll treat the user as confirmed
+      // For development, automatically sign in the user after registration
+      debugPrint('⚠️ Auto-confirming user for development');
+      
+      // Sign in the user immediately after registration
+      final signInResponse = await _supabase.auth.signInWithPassword(
+        email: email.toLowerCase(),
+        password: password,
+      );
+      
+      if (signInResponse.user == null || signInResponse.session == null) {
+        return AuthResult.error('Registration succeeded but automatic sign-in failed. Please try logging in manually.', errorType: 'signin-after-signup-failed');
       }
+      
+      debugPrint('✅ User automatically signed in after registration');
 
       // Store user data securely
       await _storeUserData({
-        'id': authResponse.user!.id,
+        'id': signInResponse.user!.id,
         'email': email.toLowerCase(),
         'first_name': firstName.trim(),
         'last_name': lastName.trim(),
@@ -121,7 +130,7 @@ class AuthService {
 
       return AuthResult.success(
         user: UserModel.fromJson({
-          'id': authResponse.user!.id,
+          'id': signInResponse.user!.id,
           'email': email.toLowerCase(),
           'first_name': firstName.trim(),
           'last_name': lastName.trim(),
@@ -132,9 +141,9 @@ class AuthService {
           'is_active': true,
           'login_attempts': 0,
         }),
-        token: authResponse.session?.accessToken ?? '',
-        refreshToken: authResponse.session?.refreshToken ?? '',
-        message: 'Registration successful. Please check your email to verify your account.',
+        token: signInResponse.session?.accessToken ?? '',
+        refreshToken: signInResponse.session?.refreshToken ?? '',
+        message: 'Registration and sign-in successful!',
       );
 
     } catch (e) {
