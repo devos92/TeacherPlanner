@@ -1,7 +1,7 @@
 // lib/pages/week_view.dart
 
 import 'package:flutter/material.dart';
-
+import '../models/weekly_plan_data.dart';
 import '../widgets/period_selection_dialog.dart';
 import '../widgets/weekly_plan_widget.dart';
 import '../models/event_block.dart';
@@ -22,7 +22,7 @@ class _WeekViewState extends State<WeekView> {
   bool _isLoadingPeriods = false;
   bool _isVerticalLayout = true;
   DateTime _weekStartDate = DateTime.now();
-  final GlobalKey<WeeklyPlanWidgetState> _weeklyPlanKey = GlobalKey<WeeklyPlanWidgetState>(); 
+  final GlobalKey<WeeklyPlanWidgetState> _weeklyPlanKey = GlobalKey<WeeklyPlanWidgetState>();
 
   @override
   void initState() {

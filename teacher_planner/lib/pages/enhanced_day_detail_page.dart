@@ -2,7 +2,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/curriculum_models.dart';
 import '../models/event_block.dart';
 import '../models/weekly_plan_data.dart';
 import '../services/day_detail_service.dart';

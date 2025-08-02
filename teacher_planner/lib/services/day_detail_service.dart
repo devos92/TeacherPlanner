@@ -4,11 +4,11 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../models/curriculum_models.dart';
 import '../models/event_block.dart';
 import '../models/weekly_plan_data.dart';
 import '../services/image_service.dart';
 import '../services/pdf_service.dart';
+
 
 class DayDetailService {
   static const List<Color> lessonColors = [

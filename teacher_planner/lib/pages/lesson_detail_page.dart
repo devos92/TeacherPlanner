@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../models/event_block.dart';
-import 'week_view.dart';
+import 'package:flutter/services.dart';
+import '../models/weekly_plan_data.dart';
+
 
 class LessonDetailPage extends StatelessWidget {
   final EventBlock event;

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import '../models/weekly_plan_data.dart';
 
+
 class LessonCellWidgets {
   // Day colors for visual distinction
   static const List<Color> _dayColors = [
