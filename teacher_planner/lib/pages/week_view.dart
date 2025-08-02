@@ -22,7 +22,7 @@ class _WeekViewState extends State<WeekView> {
   bool _isLoadingPeriods = false;
   bool _isVerticalLayout = true;
   DateTime _weekStartDate = DateTime.now();
-  final GlobalKey<WeeklyPlanWidgetState> _weeklyPlanKey = GlobalKey<WeeklyPlanWidgetState>();
+  final GlobalKey<WeeklyPlanWidgetState> _weeklyPlanKey = GlobalKey<WeeklyPlanWidgetState>(); 
 
   @override
   void initState() {
@@ -50,8 +50,8 @@ class _WeekViewState extends State<WeekView> {
         _checkPeriodsSetup();
       }
     } catch (e) {
-      debugPrint('Error loading planner settings: \$e');
-      _checkPeriodsSetup();
+             debugPrint('Error loading planner settings: $e');
+    _checkPeriodsSetup();
     }
   }
 
@@ -120,10 +120,10 @@ class _WeekViewState extends State<WeekView> {
                 'last_updated': DateTime.now().toIso8601String(),
               },
             );
-            debugPrint('✅ Saved period settings: \$selectedPeriods periods');
+                         debugPrint('✅ Saved period settings: $selectedPeriods periods');
           }
         } catch (e) {
-          debugPrint('Error saving period settings: \$e');
+          debugPrint('Error saving period settings: $e');
         }
       }
     }
@@ -139,14 +139,14 @@ class _WeekViewState extends State<WeekView> {
 
       final currentUser = await AuthService.instance.getCurrentUser();
       if (currentUser != null) {
-        debugPrint('✅ User authenticated: \${currentUser.email}');
+        debugPrint('✅ User authenticated: ${currentUser.email}');
         return currentUser.id;
       }
-
+      
       debugPrint('❌ No current user found');
       return '';
     } catch (e) {
-      debugPrint('Error getting current user ID: \$e');
+      debugPrint('Error getting current user ID: $e');
       return '';
     }
   }
@@ -172,13 +172,13 @@ class _WeekViewState extends State<WeekView> {
         userId: await _getCurrentUserId(),
       );
     } catch (e) {
-      debugPrint('Auto-save error: \$e');
+      debugPrint('Auto-save error: $e');
     }
   }
 
   Map<String, dynamic> _getWeeklyPlanData() {
     return {
-      'title': 'Weekly Plan - \${_weekStartDate.toIso8601String().split('T')[0]}',
+             'title': 'Weekly Plan - ${_weekStartDate.toIso8601String().split('T')[0]}',
       'week_start_date': _weekStartDate.toIso8601String().split('T')[0],
       'periods': _periods,
       'created_at': DateTime.now().toIso8601String(),
@@ -195,8 +195,8 @@ class _WeekViewState extends State<WeekView> {
           children: [
             Text('Weekly Plan'),
             SizedBox(height: 4),
-            Text(
-              _getWeekRangeString(),
+              Text(
+                _getWeekRangeString(),
               style: TextStyle(fontSize: 12, color: Colors.white70),
             ),
           ],
@@ -236,14 +236,14 @@ class _WeekViewState extends State<WeekView> {
               onNextWeek: () => _navigateWeek(1),
               onDayTap: _navigateToDayDetail,
               onPlanChanged: (_) => setState(() {}),
-            ),
-    );
-  }
+        ),
+      );
+    }
 
   String _getWeekRangeString() {
     final start = _weekStartDate;
     final end = _weekStartDate.add(Duration(days: 4));
-    return '\${start.day}/\${start.month} - \${end.day}/\${end.month}';
+         return '${start.day}/${start.month} - ${end.day}/${end.month}';
   }
 
   void _navigateToDayDetail(int dayIndex) {
