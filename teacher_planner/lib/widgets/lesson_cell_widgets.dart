@@ -1,3 +1,5 @@
+// lib/widgets/lesson_cell_widgets.dart
+
 import 'package:flutter/material.dart';
 import '../models/weekly_plan_data.dart';
 
