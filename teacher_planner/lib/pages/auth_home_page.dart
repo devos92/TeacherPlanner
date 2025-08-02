@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 import 'home_page.dart';
@@ -94,40 +95,43 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AppImages.backgroundImage(
-        imagePath: 'assets/images/login_background.svg', // Your login background SVG
-        overlayColor: Colors.transparent, // No overlay - just the clean image
-        child: SafeArea(
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: SlideTransition(
-              position: _slideAnimation,
-              child: SingleChildScrollView(
-                padding: EdgeInsets.all(24),
-                child: Column(
-                  children: [
-                    SizedBox(height: 60),
-                    
-                    // App Logo and Title
-                    _buildAppHeader(),
-                    
-                    SizedBox(height: 60),
-                    
-                    // Auth Card
-                    _buildAuthCard(),
-                    
-                    SizedBox(height: 40),
-                    
-                    // Toggle Button
-                    _buildToggleButton(),
-                  ],
+                    body: Stack(
+         children: [
+                       // Background Image (responsive)
+            Positioned.fill(
+              child: SvgPicture.asset(
+                'assets/images/login_background.svg',
+                fit: BoxFit.cover,
+              ),
+            ),
+                                               // Content
+             SafeArea(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: SingleChildScrollView(
+                    padding: EdgeInsets.all(24),
+                    child: Column(
+                      children: [
+                        SizedBox(height: 100),
+                        
+                        // Auth Card
+                        _buildAuthCard(),
+                        
+                        SizedBox(height: 40),
+                        
+                        // Toggle Button
+                        _buildToggleButton(),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
+         ],
+       ),
+     );
   }
 
   Widget _buildAppHeader() {
@@ -202,10 +206,11 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
     );
   }
 
-  Widget _buildAuthCard() {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(32),
+     Widget _buildAuthCard() {
+     return Container(
+       width: double.infinity,
+       constraints: BoxConstraints(maxWidth: 400),
+       padding: EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -249,27 +254,27 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
               ),
             ),
             
-            SizedBox(height: 32),
-            
-            // Form Fields
-            if (!_isLogin) ...[
-              _buildNameFields(),
-              SizedBox(height: 20),
-            ],
-            
-            _buildEmailField(),
-            SizedBox(height: 20),
-            
-            _buildPasswordField(),
-            SizedBox(height: 20),
-            
-            if (!_isLogin) ...[
-              _buildSchoolField(),
-              SizedBox(height: 20),
-              
-              _buildRoleField(),
-              SizedBox(height: 20),
-            ],
+                         SizedBox(height: 24),
+             
+             // Form Fields
+             if (!_isLogin) ...[
+               _buildNameFields(),
+               SizedBox(height: 16),
+             ],
+             
+             _buildEmailField(),
+             SizedBox(height: 16),
+             
+             _buildPasswordField(),
+             SizedBox(height: 16),
+             
+             if (!_isLogin) ...[
+               _buildSchoolField(),
+               SizedBox(height: 16),
+               
+               _buildRoleField(),
+               SizedBox(height: 16),
+             ],
             
             // Submit Button
             _buildSubmitButton(),
@@ -455,9 +460,9 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
   }
 
   Widget _buildSubmitButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 60,
+         return SizedBox(
+       width: double.infinity,
+       height: 50,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleSubmit,
         style: ElevatedButton.styleFrom(
@@ -603,9 +608,9 @@ class _AuthHomePageState extends State<AuthHomePage> with TickerProviderStateMix
     }
   }
 
-  Widget _buildToggleButton() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+     Widget _buildToggleButton() {
+     return Container(
+       padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
